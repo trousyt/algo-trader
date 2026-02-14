@@ -93,7 +93,12 @@ class TestAlpacaBarToBar:
         alpaca_bar = self._make_alpaca_bar()
         bar = alpaca_bar_to_bar(alpaca_bar)
         assert bar.timestamp == datetime(
-            2026, 1, 15, 10, 0, tzinfo=UTC,
+            2026,
+            1,
+            15,
+            10,
+            0,
+            tzinfo=UTC,
         )
 
     def test_symbol_preserved(self) -> None:

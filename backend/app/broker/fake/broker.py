@@ -38,9 +38,7 @@ class FakeBrokerAdapter:
         positions: list[Position] | None = None,
         account: AccountInfo | None = None,
     ) -> None:
-        self._positions: list[Position] = (
-            positions if positions is not None else []
-        )
+        self._positions: list[Position] = positions if positions is not None else []
         self._account: AccountInfo = account or AccountInfo(
             equity=Decimal("100000"),
             cash=Decimal("100000"),
@@ -151,7 +149,8 @@ class FakeBrokerAdapter:
         while self._connected:
             try:
                 update = await asyncio.wait_for(
-                    self._trade_queue.get(), timeout=0.1,
+                    self._trade_queue.get(),
+                    timeout=0.1,
                 )
                 yield update
             except TimeoutError:

@@ -90,13 +90,16 @@ class AlpacaBrokerAdapter:
                 )
 
             self._trading_client = TradingClient(
-                api_key, secret_key, paper=self._config.paper,
+                api_key,
+                secret_key,
+                paper=self._config.paper,
             )
 
             # Validate credentials via lightweight API call
             try:
                 await asyncio.get_event_loop().run_in_executor(
-                    None, self._trading_client.get_account,
+                    None,
+                    self._trading_client.get_account,
                 )
             except APIError as e:
                 if hasattr(e, "status_code") and e.status_code in (401, 403):
@@ -108,7 +111,9 @@ class AlpacaBrokerAdapter:
                 ) from e
 
             self._stream = TradingStream(
-                api_key, secret_key, paper=self._config.paper,
+                api_key,
+                secret_key,
+                paper=self._config.paper,
             )
             self._executor = ThreadPoolExecutor(max_workers=4)
             self._main_loop = asyncio.get_event_loop()
@@ -129,7 +134,9 @@ class AlpacaBrokerAdapter:
                 try:
                     await asyncio.wait_for(
                         asyncio.get_event_loop().run_in_executor(
-                            None, self._ws_thread.join, 5.0,
+                            None,
+                            self._ws_thread.join,
+                            5.0,
                         ),
                         timeout=10.0,
                     )
@@ -343,7 +350,8 @@ class AlpacaBrokerAdapter:
         while self._connected_event.is_set():
             try:
                 update = await asyncio.wait_for(
-                    self._trade_queue.get(), timeout=1.0,
+                    self._trade_queue.get(),
+                    timeout=1.0,
                 )
                 yield update
             except TimeoutError:
@@ -354,7 +362,8 @@ class AlpacaBrokerAdapter:
         update = alpaca_trade_update_to_trade_update(alpaca_update)
         if update is not None and self._main_loop is not None:
             self._main_loop.call_soon_threadsafe(
-                self._trade_queue.put_nowait, update,
+                self._trade_queue.put_nowait,
+                update,
             )
 
     def _run_trade_stream(self) -> None:

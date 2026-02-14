@@ -110,11 +110,14 @@ class AlpacaDataProvider:
 
             # Validate credentials via lightweight API call
             trading_client = TradingClient(
-                api_key, secret_key, paper=self._config.paper,
+                api_key,
+                secret_key,
+                paper=self._config.paper,
             )
             try:
                 await asyncio.get_event_loop().run_in_executor(
-                    None, trading_client.get_account,
+                    None,
+                    trading_client.get_account,
                 )
             except APIError as e:
                 if hasattr(e, "status_code") and e.status_code in (401, 403):
@@ -127,7 +130,8 @@ class AlpacaDataProvider:
 
             self._hist_client = StockHistoricalDataClient(api_key, secret_key)
             self._stream = StockDataStream(
-                api_key, secret_key,
+                api_key,
+                secret_key,
                 feed=self._config.data_feed,
             )
             self._executor = ThreadPoolExecutor(max_workers=4)
@@ -149,7 +153,9 @@ class AlpacaDataProvider:
                 try:
                     await asyncio.wait_for(
                         asyncio.get_event_loop().run_in_executor(
-                            None, self._ws_thread.join, 5.0,
+                            None,
+                            self._ws_thread.join,
+                            5.0,
                         ),
                         timeout=10.0,
                     )
@@ -207,7 +213,8 @@ class AlpacaDataProvider:
         while self._connected_event.is_set():
             try:
                 bar = await asyncio.wait_for(
-                    self._bar_queue.get(), timeout=1.0,
+                    self._bar_queue.get(),
+                    timeout=1.0,
                 )
                 yield bar
             except TimeoutError:

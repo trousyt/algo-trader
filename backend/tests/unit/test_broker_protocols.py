@@ -85,10 +85,12 @@ class TestProtocolSatisfaction:
             async def connect(self) -> None: ...
             async def disconnect(self) -> None: ...
             async def subscribe_bars(
-                self, symbols: list[str],
+                self,
+                symbols: list[str],
             ) -> AsyncIterator[Bar]: ...
             async def update_bar_subscription(
-                self, symbols: list[str],
+                self,
+                symbols: list[str],
             ) -> None: ...
             async def get_historical_bars(
                 self,
@@ -109,13 +111,16 @@ class TestProtocolSatisfaction:
             async def connect(self) -> None: ...
             async def disconnect(self) -> None: ...
             async def submit_order(
-                self, order: OrderRequest,
+                self,
+                order: OrderRequest,
             ) -> OrderStatus: ...
             async def submit_bracket_order(
-                self, bracket: BracketOrderRequest,
+                self,
+                bracket: BracketOrderRequest,
             ) -> OrderStatus: ...
             async def cancel_order(
-                self, broker_order_id: str,
+                self,
+                broker_order_id: str,
             ) -> None: ...
             async def replace_order(
                 self,
@@ -125,13 +130,15 @@ class TestProtocolSatisfaction:
                 stop_price: Decimal | None = None,
             ) -> OrderStatus: ...
             async def get_order_status(
-                self, broker_order_id: str,
+                self,
+                broker_order_id: str,
             ) -> OrderStatus: ...
             async def get_positions(self) -> list[Position]: ...
             async def get_account(self) -> AccountInfo: ...
             async def get_open_orders(self) -> list[OrderStatus]: ...
             async def get_recent_orders(
-                self, since_hours: int = 24,
+                self,
+                since_hours: int = 24,
             ) -> list[OrderStatus]: ...
             async def subscribe_trade_updates(
                 self,

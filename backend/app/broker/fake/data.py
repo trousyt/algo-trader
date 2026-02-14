@@ -50,7 +50,8 @@ class FakeDataProvider:
         while self._connected:
             try:
                 bar = await asyncio.wait_for(
-                    self._bar_queue.get(), timeout=0.1,
+                    self._bar_queue.get(),
+                    timeout=0.1,
                 )
                 yield bar
             except TimeoutError:
