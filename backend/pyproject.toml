@@ -49,6 +49,9 @@ select = [
     "SIM",  # flake8-simplify
     "RUF",  # ruff-specific
 ]
+ignore = [
+    "UP042", # project convention: (str, Enum) not StrEnum
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
