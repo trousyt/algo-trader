@@ -427,52 +427,52 @@ def should_long(self, bar: Bar, indicators: IndicatorSet) -> bool:
 ### Phase 3A: Test Factories + CandleAggregator (~25 min)
 
 **Shared factories**: `backend/tests/factories.py`
-- [ ] `make_bar(symbol, timestamp, open, high, low, close, volume)` — all params have defaults
-- [ ] `make_green_bar(symbol, timestamp, ...)` — close > open guaranteed
-- [ ] `make_red_bar(symbol, timestamp, ...)` — close < open guaranteed
-- [ ] All prices are `Decimal`, volume is `Decimal`
+- [x]`make_bar(symbol, timestamp, open, high, low, close, volume)` — all params have defaults
+- [x]`make_green_bar(symbol, timestamp, ...)` — close > open guaranteed
+- [x]`make_red_bar(symbol, timestamp, ...)` — close < open guaranteed
+- [x]All prices are `Decimal`, volume is `Decimal`
 
 **Tests**: `backend/tests/unit/test_candle_aggregator.py`
 
 _Construction & validation:_
-- [ ] Rejects invalid interval (e.g., 3, 7)
-- [ ] Accepts valid intervals: 1, 2, 5, 10
-- [ ] Stores symbol and interval
+- [x]Rejects invalid interval (e.g., 3, 7)
+- [x]Accepts valid intervals: 1, 2, 5, 10
+- [x]Stores symbol and interval
 
 _1-min pass-through (interval=1):_
-- [ ] Returns bar immediately (no buffering)
-- [ ] Preserves all bar fields
+- [x]Returns bar immediately (no buffering)
+- [x]Preserves all bar fields
 
 _2-min aggregation:_
-- [ ] First bar returns None (buffered)
-- [ ] Second bar returns completed candle
-- [ ] Candle OHLCV: open=first.open, high=max(highs), low=min(lows), close=last.close, volume=sum(volumes)
-- [ ] Candle timestamp = window start time
-- [ ] Candle symbol preserved
+- [x]First bar returns None (buffered)
+- [x]Second bar returns completed candle
+- [x]Candle OHLCV: open=first.open, high=max(highs), low=min(lows), close=last.close, volume=sum(volumes)
+- [x]Candle timestamp = window start time
+- [x]Candle symbol preserved
 
 _5-min and 10-min aggregation:_
-- [ ] Buffers correct number of bars before emitting
-- [ ] OHLCV math correct for 5 bars
-- [ ] OHLCV math correct for 10 bars
+- [x]Buffers correct number of bars before emitting
+- [x]OHLCV math correct for 5 bars
+- [x]OHLCV math correct for 10 bars
 
 _Window alignment (DST-safe via market_open()):_
-- [ ] Candles aligned to market open (9:30 ET)
-- [ ] 5-min: bars at 9:30-9:34 → candle at 9:30, bars at 9:35-9:39 → candle at 9:35
-- [ ] 2-min: bars at 9:30-9:31 → candle at 9:30, bars at 9:32-9:33 → candle at 9:32
-- [ ] Mid-day start: bar at 10:47 correctly placed in its window (10:46 for 2-min)
+- [x]Candles aligned to market open (9:30 ET)
+- [x]5-min: bars at 9:30-9:34 → candle at 9:30, bars at 9:35-9:39 → candle at 9:35
+- [x]2-min: bars at 9:30-9:31 → candle at 9:30, bars at 9:32-9:33 → candle at 9:32
+- [x]Mid-day start: bar at 10:47 correctly placed in its window (10:46 for 2-min)
 
 _Edge cases:_
-- [ ] Duplicate bar timestamp → dropped (returns None)
-- [ ] Bar outside market hours → ignored (returns None)
-- [ ] `flush()` returns partial candle from buffered bars
-- [ ] `flush()` returns None when buffer is empty
+- [x]Duplicate bar timestamp → dropped (returns None)
+- [x]Bar outside market hours → ignored (returns None)
+- [x]`flush()` returns partial candle from buffered bars
+- [x]`flush()` returns None when buffer is empty
 
 **Implementation**: `backend/app/engine/candle_aggregator.py`
-- [ ] `CandleAggregator` class
-- [ ] `process_bar(bar: Bar) -> Bar | None`
-- [ ] `flush() -> Bar | None`
-- [ ] `_calculate_window_start(timestamp: datetime) -> datetime` — uses `market_open(bar_date)`
-- [ ] `_is_market_hours(timestamp: datetime) -> bool` — uses `market_open()` / `market_close()`
+- [x]`CandleAggregator` class
+- [x]`process_bar(bar: Bar) -> Bar | None`
+- [x]`flush() -> Bar | None`
+- [x]`_calculate_window_start(timestamp: datetime) -> datetime` — uses `market_open(bar_date)`
+- [x]`_is_market_hours(timestamp: datetime) -> bool` — uses `market_open()` / `market_close()`
 
 ---
 
@@ -481,45 +481,45 @@ _Edge cases:_
 **Tests**: `backend/tests/unit/test_indicators.py`
 
 _IndicatorSet dataclass:_
-- [ ] `IndicatorSet` is frozen
-- [ ] All fields have correct types
-- [ ] Default values work (bar_count=0, rest=None)
-- [ ] Can construct with all values populated
+- [x]`IndicatorSet` is frozen
+- [x]All fields have correct types
+- [x]Default values work (bar_count=0, rest=None)
+- [x]Can construct with all values populated
 
 _Basic SMA calculation (running sum):_
-- [ ] SMA-20 correct with exactly 20 candles (verify against manual calculation)
-- [ ] SMA-200 correct with exactly 200 candles
-- [ ] SMA values are Decimal (not float)
-- [ ] SMA matches expected value for known price series
-- [ ] Running sum matches naive `sum()` result (correctness check)
+- [x]SMA-20 correct with exactly 20 candles (verify against manual calculation)
+- [x]SMA-200 correct with exactly 200 candles
+- [x]SMA values are Decimal (not float)
+- [x]SMA matches expected value for known price series
+- [x]Running sum matches naive `sum()` result (correctness check)
 
 _Warm-up behavior:_
-- [ ] First candle: sma_fast=None, sma_slow=None, bar_count=1
-- [ ] After 20 candles: sma_fast has value, sma_slow=None, bar_count=20
-- [ ] After 200 candles: both have values, bar_count=200
-- [ ] `is_warm` is False until 200 candles, True after
+- [x]First candle: sma_fast=None, sma_slow=None, bar_count=1
+- [x]After 20 candles: sma_fast has value, sma_slow=None, bar_count=20
+- [x]After 200 candles: both have values, bar_count=200
+- [x]`is_warm` is False until 200 candles, True after
 
 _Previous values:_
-- [ ] First candle: prev_sma_fast=None, prev_sma_slow=None
-- [ ] Second candle: prev values = previous candle's current values
-- [ ] Values correctly shift each candle
+- [x]First candle: prev_sma_fast=None, prev_sma_slow=None
+- [x]Second candle: prev values = previous candle's current values
+- [x]Values correctly shift each candle
 
 _Ring buffer with running sum:_
-- [ ] After 201 candles, bar_count capped at slow_period (oldest evicted)
-- [ ] SMA recalculated correctly after eviction (running sum stays accurate)
+- [x]After 201 candles, bar_count capped at slow_period (oldest evicted)
+- [x]SMA recalculated correctly after eviction (running sum stays accurate)
 
 _Edge cases:_
-- [ ] All candles same price → SMA = that price
-- [ ] Monotonically increasing prices → SMA lags
-- [ ] Large price differences → no precision loss (Decimal)
+- [x]All candles same price → SMA = that price
+- [x]Monotonically increasing prices → SMA lags
+- [x]Large price differences → no precision loss (Decimal)
 
 **Implementation**: `backend/app/engine/indicators.py`
-- [ ] `IndicatorSet` frozen dataclass (top of file)
-- [ ] `IndicatorCalculator` class
-- [ ] Two deques: `_fast_buf`, `_slow_buf` with running sums `_fast_sum`, `_slow_sum`
-- [ ] `process_candle(candle: Bar) -> IndicatorSet`
-- [ ] `bar_count` property (uses `len(_slow_buf)`)
-- [ ] `is_warm` property
+- [x]`IndicatorSet` frozen dataclass (top of file)
+- [x]`IndicatorCalculator` class
+- [x]Two deques: `_fast_buf`, `_slow_buf` with running sums `_fast_sum`, `_slow_sum`
+- [x]`process_candle(candle: Bar) -> IndicatorSet`
+- [x]`bar_count` property (uses `len(_slow_buf)`)
+- [x]`is_warm` property
 
 ---
 
@@ -528,18 +528,18 @@ _Edge cases:_
 **Tests**: `backend/tests/unit/test_strategy_base.py`
 
 _Abstract class behavior:_
-- [ ] Cannot instantiate Strategy directly (ABC)
-- [ ] Concrete subclass that implements all abstract methods can be instantiated
-- [ ] `symbol` set on `__init__`
-- [ ] `should_short()` returns False by default
-- [ ] `should_cancel_pending()` returns True when candles_since_order >= 1
-- [ ] `required_history` property returns 200 by default
-- [ ] `on_position_closed()` is a no-op by default
-- [ ] `entry_price()` and `stop_loss_price()` accept `(bar, indicators)` signature
+- [x]Cannot instantiate Strategy directly (ABC)
+- [x]Concrete subclass that implements all abstract methods can be instantiated
+- [x]`symbol` set on `__init__`
+- [x]`should_short()` returns False by default
+- [x]`should_cancel_pending()` returns True when candles_since_order >= 1
+- [x]`required_history` property returns 200 by default
+- [x]`on_position_closed()` is a no-op by default
+- [x]`entry_price()` and `stop_loss_price()` accept `(bar, indicators)` signature
 
 **Implementation**: `backend/app/strategy/base.py`
-- [ ] `Strategy` ABC with all methods per design above
-- [ ] Google-style docstrings
+- [x]`Strategy` ABC with all methods per design above
+- [x]Google-style docstrings
 
 ---
 
@@ -548,137 +548,137 @@ _Abstract class behavior:_
 **Tests**: `backend/tests/unit/test_velez_strategy.py`
 
 _Signal detection (should_long):_
-- [ ] Returns False when not warm (bar_count < 200)
-- [ ] Returns False when indicators are None
-- [ ] Returns False when SMAs not tight (spread > threshold%)
-- [ ] Returns False when SMAs tight but not diverging (gap not widening)
-- [ ] Returns False when diverging but SMA-20 below SMA-200
-- [ ] Returns False when setup valid but candle is red (close <= open)
-- [ ] Returns False when setup valid but candle not strong (body_pct < threshold)
-- [ ] Returns True when ALL conditions met: warm + tight + diverging + green + strong
-- [ ] Boundary test: spread exactly at threshold → False (exclusive)
-- [ ] Zero-range candle (high == low) → not strong → False
-- [ ] Zero-price bar (close == 0) → False (division-by-zero guard)
+- [x]Returns False when not warm (bar_count < 200)
+- [x]Returns False when indicators are None
+- [x]Returns False when SMAs not tight (spread > threshold%)
+- [x]Returns False when SMAs tight but not diverging (gap not widening)
+- [x]Returns False when diverging but SMA-20 below SMA-200
+- [x]Returns False when setup valid but candle is red (close <= open)
+- [x]Returns False when setup valid but candle not strong (body_pct < threshold)
+- [x]Returns True when ALL conditions met: warm + tight + diverging + green + strong
+- [x]Boundary test: spread exactly at threshold → False (exclusive)
+- [x]Zero-range candle (high == low) → not strong → False
+- [x]Zero-price bar (close == 0) → False (division-by-zero guard)
 
 _Entry and stop prices:_
-- [ ] `entry_price(bar, indicators)` returns `bar.high` (buy-stop level)
-- [ ] `stop_loss_price(bar, indicators)` returns `bar.low - max(bar.low * stop_buffer_pct/100, stop_buffer_min)`
-- [ ] Stop buffer percentage vs minimum: larger of the two is used
-- [ ] Decimal precision maintained
+- [x]`entry_price(bar, indicators)` returns `bar.high` (buy-stop level)
+- [x]`stop_loss_price(bar, indicators)` returns `bar.low - max(bar.low * stop_buffer_pct/100, stop_buffer_min)`
+- [x]Stop buffer percentage vs minimum: larger of the two is used
+- [x]Decimal precision maintained
 
 _Buy-stop expiry:_
-- [ ] `should_cancel_pending(bar, 0)` → False (just placed)
-- [ ] `should_cancel_pending(bar, 1)` → True (default expiry is 1 candle)
-- [ ] Configurable: with `buy_stop_expiry_candles=3`, returns False for 0,1,2 and True for 3
+- [x]`should_cancel_pending(bar, 0)` → False (just placed)
+- [x]`should_cancel_pending(bar, 1)` → True (default expiry is 1 candle)
+- [x]Configurable: with `buy_stop_expiry_candles=3`, returns False for 0,1,2 and True for 3
 
 _Trailing stop state machine (3 states, method-per-state):_
-- [ ] Initial state is `WATCHING`
-- [ ] `WATCHING` + red candle → `PULLING_BACK` (record low, green_count=0)
-- [ ] `PULLING_BACK` + another red → update pullback low to lowest, green_count=0
-- [ ] `PULLING_BACK` + 1 green candle → returns None (need 2)
-- [ ] `PULLING_BACK` + 2 green candles → returns pullback low, → `TRAILING`
-- [ ] `PULLING_BACK` + green then red → resets green count, need 2 fresh greens
-- [ ] `TRAILING` + red candle → `WATCHING` (cycle repeats)
-- [ ] Doji candle → neutral: does not advance green count, does not start pullback
-- [ ] `on_position_closed()` resets to `WATCHING` with all counters cleared
+- [x]Initial state is `WATCHING`
+- [x]`WATCHING` + red candle → `PULLING_BACK` (record low, green_count=0)
+- [x]`PULLING_BACK` + another red → update pullback low to lowest, green_count=0
+- [x]`PULLING_BACK` + 1 green candle → returns None (need 2)
+- [x]`PULLING_BACK` + 2 green candles → returns pullback low, → `TRAILING`
+- [x]`PULLING_BACK` + green then red → resets green count, need 2 fresh greens
+- [x]`TRAILING` + red candle → `WATCHING` (cycle repeats)
+- [x]Doji candle → neutral: does not advance green count, does not start pullback
+- [x]`on_position_closed()` resets to `WATCHING` with all counters cleared
 
 _Max run rule (should_exit):_
-- [ ] Returns False when no position (defensive)
-- [ ] Returns False during normal trailing
-- [ ] Returns True after `max_run_candles` consecutive strong candles post-trail
-- [ ] Non-strong candle resets the max run counter
-- [ ] Doji resets the max run counter
+- [x]Returns False when no position (defensive)
+- [x]Returns False during normal trailing
+- [x]Returns True after `max_run_candles` consecutive strong candles post-trail
+- [x]Non-strong candle resets the max run counter
+- [x]Doji resets the max run counter
 
 _Helper method tests:_
-- [ ] `_is_strong_candle(bar)` — body percentage >= threshold
-- [ ] `_is_strong_candle(bar)` — zero range → False
-- [ ] `_is_doji(bar)` — body percentage < doji threshold
-- [ ] `_body_pct(bar)` — correct calculation
+- [x]`_is_strong_candle(bar)` — body percentage >= threshold
+- [x]`_is_strong_candle(bar)` — zero range → False
+- [x]`_is_doji(bar)` — body percentage < doji threshold
+- [x]`_body_pct(bar)` — correct calculation
 
 **Implementation**: `backend/app/strategy/velez.py`
-- [ ] `_TrailState(str, Enum)` — `WATCHING`, `PULLING_BACK`, `TRAILING`
-- [ ] `VelezStrategy(Strategy)` class
-- [ ] `__init__(symbol, config: VelezConfig)`
-- [ ] `should_long()` — full signal detection (with mypy-safe None narrowing)
-- [ ] `entry_price(bar, indicators)` — bar.high
-- [ ] `stop_loss_price(bar, indicators)` — bar.low minus buffer
-- [ ] `should_update_stop()` — trailing stop state machine via dispatch
-- [ ] `_on_watching(bar)` — detect red candle for pullback entry
-- [ ] `_on_pulling_back(bar)` — count greens, update pullback low
-- [ ] `_on_trailing(bar)` — count strong run, detect next pullback
-- [ ] `should_exit()` — max run rule
-- [ ] `should_cancel_pending()` — configurable expiry
-- [ ] `on_position_closed()` — reset `_trail_state` to `WATCHING`, clear counters
-- [ ] `_is_strong_candle(bar: Bar) -> bool`
-- [ ] `_is_doji(bar: Bar) -> bool`
-- [ ] `_body_pct(bar: Bar) -> Decimal`
-- [ ] Internal state: `_trail_state`, `_pullback_low`, `_green_count`, `_strong_run_count`
+- [x]`_TrailState(str, Enum)` — `WATCHING`, `PULLING_BACK`, `TRAILING`
+- [x]`VelezStrategy(Strategy)` class
+- [x]`__init__(symbol, config: VelezConfig)`
+- [x]`should_long()` — full signal detection (with mypy-safe None narrowing)
+- [x]`entry_price(bar, indicators)` — bar.high
+- [x]`stop_loss_price(bar, indicators)` — bar.low minus buffer
+- [x]`should_update_stop()` — trailing stop state machine via dispatch
+- [x]`_on_watching(bar)` — detect red candle for pullback entry
+- [x]`_on_pulling_back(bar)` — count greens, update pullback low
+- [x]`_on_trailing(bar)` — count strong run, detect next pullback
+- [x]`should_exit()` — max run rule
+- [x]`should_cancel_pending()` — configurable expiry
+- [x]`on_position_closed()` — reset `_trail_state` to `WATCHING`, clear counters
+- [x]`_is_strong_candle(bar: Bar) -> bool`
+- [x]`_is_doji(bar: Bar) -> bool`
+- [x]`_body_pct(bar: Bar) -> Decimal`
+- [x]Internal state: `_trail_state`, `_pullback_low`, `_green_count`, `_strong_run_count`
 
 ---
 
 ### Phase 3E: Package Re-exports + Verification (~10 min)
 
 **Tasks:**
-- [ ] `engine/__init__.py` re-exports: `CandleAggregator`, `IndicatorCalculator`, `IndicatorSet`
-- [ ] `strategy/__init__.py` re-exports: `Strategy`, `VelezStrategy`
-- [ ] `uv run pytest` — all tests pass
-- [ ] `uv run mypy app/` — zero errors
-- [ ] `uv run ruff check app/ tests/` — zero errors
-- [ ] `uv run ruff format --check app/ tests/` — no formatting issues
-- [ ] Commit
+- [x]`engine/__init__.py` re-exports: `CandleAggregator`, `IndicatorCalculator`, `IndicatorSet`
+- [x]`strategy/__init__.py` re-exports: `Strategy`, `VelezStrategy`
+- [x]`uv run pytest` — all tests pass
+- [x]`uv run mypy app/` — zero errors
+- [x]`uv run ruff check app/ tests/` — zero errors
+- [x]`uv run ruff format --check app/ tests/` — no formatting issues
+- [x]Commit
 
 ---
 
 ## Acceptance Criteria
 
 ### Functional
-- [ ] `IndicatorSet` is correctly defined as frozen dataclass with 5 typed fields (lives in `indicators.py`)
-- [ ] `CandleAggregator` correctly aggregates 1-min bars into 1/2/5/10-min candles
-- [ ] Candles aligned to market open (9:30 ET) using `market_open()` util (DST-safe)
-- [ ] 1-min pass-through works (no buffering)
-- [ ] Duplicate bar timestamps are dropped
-- [ ] Bars outside market hours are ignored
-- [ ] `flush()` emits partial candle from buffer
-- [ ] `IndicatorCalculator` correctly computes SMA-20 and SMA-200 using running sums
-- [ ] Running sum SMA matches naive `sum()` calculation (correctness verified)
-- [ ] SMA values match manual calculation for known price series
-- [ ] Warm-up: `sma_fast=None` until 20 candles, `sma_slow=None` until 200 candles
-- [ ] Previous SMA values correctly track prior candle's values
-- [ ] Ring buffer auto-evicts oldest when at capacity
-- [ ] `Strategy` base class is abstract (cannot instantiate directly)
-- [ ] `should_short()` returns False by default
-- [ ] `should_cancel_pending()` has default implementation (cancel after 1 candle)
-- [ ] `on_position_closed()` is a no-op by default
-- [ ] `required_history` is a `@property` returning 200
-- [ ] `entry_price()` and `stop_loss_price()` accept `(bar, indicators)` signature
-- [ ] VelezStrategy detects SMA convergence setup (tight + diverging + strong green candle)
-- [ ] VelezStrategy handles zero-price bar (division-by-zero guard)
-- [ ] VelezStrategy returns correct entry price (bar.high)
-- [ ] VelezStrategy returns correct stop-loss price (bar.low minus buffer)
-- [ ] Trailing stop uses 3-state machine: WATCHING → PULLING_BACK → TRAILING
-- [ ] Method-per-state dispatch: `_on_watching()`, `_on_pulling_back()`, `_on_trailing()`
-- [ ] Multiple consecutive red candles use lowest low for pullback
-- [ ] Doji candles treated as neutral in trailing stop
-- [ ] Max run rule exits after N consecutive strong candles post-trail
-- [ ] Buy-stop expiry works with configurable candle count
-- [ ] `on_position_closed()` resets trailing stop state to WATCHING
+- [x]`IndicatorSet` is correctly defined as frozen dataclass with 5 typed fields (lives in `indicators.py`)
+- [x]`CandleAggregator` correctly aggregates 1-min bars into 1/2/5/10-min candles
+- [x]Candles aligned to market open (9:30 ET) using `market_open()` util (DST-safe)
+- [x]1-min pass-through works (no buffering)
+- [x]Duplicate bar timestamps are dropped
+- [x]Bars outside market hours are ignored
+- [x]`flush()` emits partial candle from buffer
+- [x]`IndicatorCalculator` correctly computes SMA-20 and SMA-200 using running sums
+- [x]Running sum SMA matches naive `sum()` calculation (correctness verified)
+- [x]SMA values match manual calculation for known price series
+- [x]Warm-up: `sma_fast=None` until 20 candles, `sma_slow=None` until 200 candles
+- [x]Previous SMA values correctly track prior candle's values
+- [x]Ring buffer auto-evicts oldest when at capacity
+- [x]`Strategy` base class is abstract (cannot instantiate directly)
+- [x]`should_short()` returns False by default
+- [x]`should_cancel_pending()` has default implementation (cancel after 1 candle)
+- [x]`on_position_closed()` is a no-op by default
+- [x]`required_history` is a `@property` returning 200
+- [x]`entry_price()` and `stop_loss_price()` accept `(bar, indicators)` signature
+- [x]VelezStrategy detects SMA convergence setup (tight + diverging + strong green candle)
+- [x]VelezStrategy handles zero-price bar (division-by-zero guard)
+- [x]VelezStrategy returns correct entry price (bar.high)
+- [x]VelezStrategy returns correct stop-loss price (bar.low minus buffer)
+- [x]Trailing stop uses 3-state machine: WATCHING → PULLING_BACK → TRAILING
+- [x]Method-per-state dispatch: `_on_watching()`, `_on_pulling_back()`, `_on_trailing()`
+- [x]Multiple consecutive red candles use lowest low for pullback
+- [x]Doji candles treated as neutral in trailing stop
+- [x]Max run rule exits after N consecutive strong candles post-trail
+- [x]Buy-stop expiry works with configurable candle count
+- [x]`on_position_closed()` resets trailing stop state to WATCHING
 
 ### Non-Functional
-- [ ] All monetary values are `Decimal` (never `float`)
-- [ ] SMA computation uses `Decimal` running sums (no float intermediaries, zero drift)
-- [ ] No circular imports between `engine` and `strategy` modules
-- [ ] No magic numbers — all thresholds come from `VelezConfig` or named constants
-- [ ] Strategy state is instance-scoped (one instance per symbol)
-- [ ] `_TrailState` uses `(str, Enum)` per project convention
-- [ ] Shared test factories in `tests/factories.py` (not duplicated per test file)
+- [x]All monetary values are `Decimal` (never `float`)
+- [x]SMA computation uses `Decimal` running sums (no float intermediaries, zero drift)
+- [x]No circular imports between `engine` and `strategy` modules
+- [x]No magic numbers — all thresholds come from `VelezConfig` or named constants
+- [x]Strategy state is instance-scoped (one instance per symbol)
+- [x]`_TrailState` uses `(str, Enum)` per project convention
+- [x]Shared test factories in `tests/factories.py` (not duplicated per test file)
 
 ### Quality Gates
-- [ ] All tests written BEFORE implementation (TDD)
-- [ ] Zero mypy errors in strict mode (None-narrowing uses individual `is None` checks)
-- [ ] Zero ruff lint/format errors
-- [ ] No `Optional[X]` — use `X | None` throughout
-- [ ] No bare `except:` — specific exceptions only
-- [ ] Google-style docstrings on all public classes and non-obvious functions
+- [x]All tests written BEFORE implementation (TDD)
+- [x]Zero mypy errors in strict mode (None-narrowing uses individual `is None` checks)
+- [x]Zero ruff lint/format errors
+- [x]No `Optional[X]` — use `X | None` throughout
+- [x]No bare `except:` — specific exceptions only
+- [x]Google-style docstrings on all public classes and non-obvious functions
 
 ---
 
