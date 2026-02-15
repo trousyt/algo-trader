@@ -98,6 +98,12 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - Strategy logic testable with mock market data (no live API calls in unit tests)
 
 ### Git
+- **Conventional Commits** ([spec](https://www.conventionalcommits.org/en/v1.0.0/)): `<type>(<scope>): <description>`
+  - Types: `feat` (new feature), `fix` (bug fix), `refactor`, `docs`, `test`, `perf`, `build`, `ci`, `chore`
+  - Scope is optional but encouraged: `feat(engine):`, `fix(broker):`, `docs(solutions):`
+  - Breaking changes: append `!` after type/scope — `feat(api)!: remove v1 endpoints`
+  - Body (optional): one blank line after description, explains "why" not "what"
+  - Keep description lowercase, imperative, no period: `feat: add candle aggregator`
 - Never add Co-Authored-By or Claude attribution to commits
 
 ### Safety
