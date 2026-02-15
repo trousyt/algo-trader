@@ -77,10 +77,14 @@ class IndicatorCalculator:
 
         # Compute current SMAs
         current_fast = self._compute_sma(
-            self._fast_buf, self._fast_sum, self._fast_period,
+            self._fast_buf,
+            self._fast_sum,
+            self._fast_period,
         )
         current_slow = self._compute_sma(
-            self._slow_buf, self._slow_sum, self._slow_period,
+            self._slow_buf,
+            self._slow_sum,
+            self._slow_period,
         )
 
         return IndicatorSet(

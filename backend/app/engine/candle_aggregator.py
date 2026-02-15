@@ -106,9 +106,8 @@ class CandleAggregator:
         open_dt = market_open(d)
         minutes_since_open = int((timestamp - open_dt).total_seconds() // 60)
         window_offset = (
-            (minutes_since_open // self.interval_minutes)
-            * self.interval_minutes
-        )
+            minutes_since_open // self.interval_minutes
+        ) * self.interval_minutes
         return open_dt + timedelta(minutes=window_offset)
 
     def _is_market_hours(self, timestamp: datetime) -> bool:
