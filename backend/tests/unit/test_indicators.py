@@ -23,27 +23,27 @@ class TestIndicatorSet:
 
     def test_is_frozen(self) -> None:
         ind = IndicatorSet(
-            sma_fast=Decimal("150"),
-            sma_slow=Decimal("148"),
-            prev_sma_fast=Decimal("149"),
-            prev_sma_slow=Decimal("147"),
+            sma_fast=150.0,
+            sma_slow=148.0,
+            prev_sma_fast=149.0,
+            prev_sma_slow=147.0,
             bar_count=200,
         )
         with pytest.raises(FrozenInstanceError):
-            ind.sma_fast = Decimal("999")  # type: ignore[misc]
+            ind.sma_fast = 999.0  # type: ignore[misc]
 
     def test_all_fields_have_correct_types(self) -> None:
         ind = IndicatorSet(
-            sma_fast=Decimal("150"),
-            sma_slow=Decimal("148"),
-            prev_sma_fast=Decimal("149"),
-            prev_sma_slow=Decimal("147"),
+            sma_fast=150.0,
+            sma_slow=148.0,
+            prev_sma_fast=149.0,
+            prev_sma_slow=147.0,
             bar_count=200,
         )
-        assert isinstance(ind.sma_fast, Decimal)
-        assert isinstance(ind.sma_slow, Decimal)
-        assert isinstance(ind.prev_sma_fast, Decimal)
-        assert isinstance(ind.prev_sma_slow, Decimal)
+        assert isinstance(ind.sma_fast, float)
+        assert isinstance(ind.sma_slow, float)
+        assert isinstance(ind.prev_sma_fast, float)
+        assert isinstance(ind.prev_sma_slow, float)
         assert isinstance(ind.bar_count, int)
 
     def test_default_values(self) -> None:
@@ -56,13 +56,13 @@ class TestIndicatorSet:
 
     def test_construct_with_all_values(self) -> None:
         ind = IndicatorSet(
-            sma_fast=Decimal("20.5"),
-            sma_slow=Decimal("19.3"),
-            prev_sma_fast=Decimal("20.4"),
-            prev_sma_slow=Decimal("19.2"),
+            sma_fast=20.5,
+            sma_slow=19.3,
+            prev_sma_fast=20.4,
+            prev_sma_slow=19.2,
             bar_count=250,
         )
-        assert ind.sma_fast == Decimal("20.5")
+        assert ind.sma_fast == pytest.approx(20.5)
         assert ind.bar_count == 250
 
 
@@ -95,7 +95,7 @@ class TestSMACalculation:
         # Prices 1..20, SMA-20 = (1+2+...+20) / 20 = 210/20 = 10.5
         for i in range(1, 21):
             result = calc.process_candle(_candle_at(i, Decimal(str(i))))
-        assert result.sma_fast == Decimal("210") / Decimal("20")
+        assert result.sma_fast == pytest.approx(10.5)
 
     def test_sma_200_correct(self) -> None:
         """SMA-200 with exactly 200 candles."""
@@ -103,14 +103,14 @@ class TestSMACalculation:
         # Prices 1..200, SMA-200 = (1+2+...+200)/200 = 20100/200 = 100.5
         for i in range(1, 201):
             result = calc.process_candle(_candle_at(i, Decimal(str(i))))
-        assert result.sma_slow == Decimal("20100") / Decimal("200")
+        assert result.sma_slow == pytest.approx(100.5)
 
-    def test_sma_values_are_decimal(self) -> None:
+    def test_sma_values_are_float(self) -> None:
         calc = IndicatorCalculator(fast_period=3, slow_period=5)
         for i in range(1, 6):
             result = calc.process_candle(_candle_at(i, Decimal(str(i * 10))))
-        assert isinstance(result.sma_fast, Decimal)
-        assert isinstance(result.sma_slow, Decimal)
+        assert isinstance(result.sma_fast, float)
+        assert isinstance(result.sma_slow, float)
 
     def test_sma_matches_known_series(self) -> None:
         """Verify against manually computed values."""
@@ -125,9 +125,9 @@ class TestSMACalculation:
         for i, p in enumerate(prices):
             result = calc.process_candle(_candle_at(i, p))
         # SMA-3 of last 3 (30,40,50) = 120/3 = 40
-        assert result.sma_fast == Decimal("40")
+        assert result.sma_fast == pytest.approx(40.0)
         # SMA-5 of all 5 = 150/5 = 30
-        assert result.sma_slow == Decimal("30")
+        assert result.sma_slow == pytest.approx(30.0)
 
     def test_running_sum_matches_naive_sum(self) -> None:
         """Running sum optimization matches naive sum() for correctness."""
@@ -139,14 +139,14 @@ class TestSMACalculation:
             result = calc.process_candle(_candle_at(i, p))
 
         # Verify fast SMA
-        last_20 = prices[-20:]
-        expected_fast = sum(last_20) / Decimal("20")
-        assert result.sma_fast == expected_fast
+        last_20 = [float(p) for p in prices[-20:]]
+        expected_fast = sum(last_20) / 20
+        assert result.sma_fast == pytest.approx(expected_fast)
 
         # Verify slow SMA
-        last_50 = prices[-50:]
-        expected_slow = sum(last_50) / Decimal("50")
-        assert result.sma_slow == expected_slow
+        last_50 = [float(p) for p in prices[-50:]]
+        expected_slow = sum(last_50) / 50
+        assert result.sma_slow == pytest.approx(expected_slow)
 
 
 # --- Warm-up behavior ---
@@ -212,8 +212,8 @@ class TestPreviousValues:
 
         # After 4 candles: sma_fast at candle 3 = (20+30+40)/3 = 30
         # prev_sma_fast at candle 3 = sma_fast at candle 2 = (10+20+30)/3 = 20
-        assert results[3].sma_fast == Decimal("30")
-        assert results[3].prev_sma_fast == Decimal("20")
+        assert results[3].sma_fast == pytest.approx(30.0)
+        assert results[3].prev_sma_fast == pytest.approx(20.0)
 
     def test_values_shift_each_candle(self) -> None:
         calc = IndicatorCalculator(fast_period=3, slow_period=5)
@@ -230,8 +230,8 @@ class TestPreviousValues:
 
         # Candle 4 (50): sma_fast = (30+40+50)/3 = 40
         # Candle 3 (40): sma_fast = (20+30+40)/3 = 30  ← this should be prev_sma_fast
-        assert results[4].sma_fast == Decimal("40")
-        assert results[4].prev_sma_fast == Decimal("30")
+        assert results[4].sma_fast == pytest.approx(40.0)
+        assert results[4].prev_sma_fast == pytest.approx(30.0)
 
 
 # --- Ring buffer ---
@@ -261,9 +261,9 @@ class TestRingBuffer:
             result = calc.process_candle(_candle_at(i, p))
         # After 6: fast buffer has [40, 50, 60], slow buffer has [20, 30, 40, 50, 60]
         # SMA-3 = (40+50+60)/3 = 50
-        assert result.sma_fast == Decimal("50")
+        assert result.sma_fast == pytest.approx(50.0)
         # SMA-5 = (20+30+40+50+60)/5 = 40
-        assert result.sma_slow == Decimal("40")
+        assert result.sma_slow == pytest.approx(40.0)
 
 
 # --- Edge cases ---
@@ -276,21 +276,21 @@ class TestIndicatorEdgeCases:
         calc = IndicatorCalculator(fast_period=3, slow_period=5)
         for i in range(5):
             result = calc.process_candle(_candle_at(i, Decimal("42.50")))
-        assert result.sma_fast == Decimal("42.50")
-        assert result.sma_slow == Decimal("42.50")
+        assert result.sma_fast == pytest.approx(42.5)
+        assert result.sma_slow == pytest.approx(42.5)
 
     def test_monotonically_increasing(self) -> None:
         calc = IndicatorCalculator(fast_period=3, slow_period=5)
         for i in range(5):
             result = calc.process_candle(_candle_at(i, Decimal(str(100 + i))))
         # SMA-3 of [102, 103, 104] = 309/3 = 103
-        assert result.sma_fast == Decimal("103")
+        assert result.sma_fast == pytest.approx(103.0)
         # SMA-5 of [100..104] = 510/5 = 102
-        assert result.sma_slow == Decimal("102")
+        assert result.sma_slow == pytest.approx(102.0)
         # Fast SMA > Slow SMA (lagging)
-        assert result.sma_fast > result.sma_slow
+        assert result.sma_fast > result.sma_slow  # type: ignore[operator]
 
-    def test_large_price_differences_no_precision_loss(self) -> None:
+    def test_large_price_differences(self) -> None:
         calc = IndicatorCalculator(fast_period=3, slow_period=5)
         prices = [
             Decimal("0.01"),
@@ -302,5 +302,5 @@ class TestIndicatorEdgeCases:
         for i, p in enumerate(prices):
             result = calc.process_candle(_candle_at(i, p))
         # SMA-3 = (50000.00 + 0.01 + 99999.99) / 3 = 150000.00 / 3 = 50000
-        expected_fast = Decimal("150000.00") / Decimal("3")
-        assert result.sma_fast == expected_fast
+        expected_fast = 150000.0 / 3
+        assert result.sma_fast == pytest.approx(expected_fast)

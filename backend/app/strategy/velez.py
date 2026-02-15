@@ -34,7 +34,7 @@ class VelezStrategy(Strategy):
 
     Entry: buy-stop at bar.high.
     Stop: bar.low minus buffer.
-    Trail: 3-state machine (WATCHING → PULLING_BACK → TRAILING).
+    Trail: 3-state machine (WATCHING -> PULLING_BACK -> TRAILING).
     Exit: max run of consecutive strong candles post-trail.
     """
 
@@ -46,7 +46,7 @@ class VelezStrategy(Strategy):
         self._green_count = 0
         self._strong_run_count = 0
 
-    # --- Signal detection ---
+    # --- Signal detection (float math) ---
 
     def should_long(
         self,
@@ -67,11 +67,11 @@ class VelezStrategy(Strategy):
             return False
 
         # 3. Division-by-zero guard + SMAs tight check
-        price = bar.close
+        price = float(bar.close)
         if price == 0:
             return False
         spread = abs(sma_f - sma_s)
-        if spread / price * _HUNDRED >= self._config.tightness_threshold_pct:
+        if spread / price * 100.0 >= self._config.tightness_threshold_pct:
             return False
 
         # 4. SMA-20 diverging upward from SMA-200
@@ -87,7 +87,7 @@ class VelezStrategy(Strategy):
             return False
         return self._is_strong_candle(bar)
 
-    # --- Entry and stop prices ---
+    # --- Entry and stop prices (Decimal math) ---
 
     def entry_price(
         self,
@@ -170,7 +170,7 @@ class VelezStrategy(Strategy):
         if self._is_doji(bar):
             return None
         if bar.close < bar.open:
-            # Red candle → back to WATCHING for new cycle
+            # Red candle -> back to WATCHING for new cycle
             self._trail_state = _TrailState.WATCHING
         return None
 
@@ -208,15 +208,15 @@ class VelezStrategy(Strategy):
         """Candles needed = slow SMA period."""
         return self._config.sma_slow
 
-    # --- Helpers ---
+    # --- Helpers (float math for signal detection) ---
 
-    def _body_pct(self, bar: Bar) -> Decimal:
+    def _body_pct(self, bar: Bar) -> float:
         """Body as percentage of total range."""
-        total_range = bar.high - bar.low
+        total_range = float(bar.high - bar.low)  # Decimal subtraction first
         if total_range == 0:
-            return Decimal("0")
-        body = abs(bar.close - bar.open)
-        return body / total_range * _HUNDRED
+            return 0.0
+        body = abs(float(bar.close - bar.open))  # Decimal subtraction first
+        return body / total_range * 100.0
 
     def _is_strong_candle(self, bar: Bar) -> bool:
         """True if body percentage >= strong candle threshold."""

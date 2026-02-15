@@ -1,17 +1,63 @@
-"""Indicator calculation with running-sum SMA optimization.
+"""Indicator calculation with ring-buffer SMA optimization.
 
+SMA is a standalone ring-buffer class with O(1) per update.
 IndicatorSet is a frozen dataclass holding current and previous SMA values.
-IndicatorCalculator maintains two ring buffers (fast + slow) with running
-Decimal sums for O(1) SMA computation per candle.
+IndicatorCalculator composes SMA instances and converts Decimal → float
+at the boundary.
 """
 
 from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from decimal import Decimal
 
 from app.broker.types import Bar
+
+
+class SMA:
+    """Simple Moving Average via ring buffer with running sum. O(1) per update.
+
+    Note: Running-sum approach may accumulate negligible float drift over very
+    long series (100K+ updates). Acceptable for signal detection; add periodic
+    re-sum if needed for backtesting precision.
+    """
+
+    __slots__ = ("_buf", "_period", "_sum")
+
+    def __init__(self, period: int) -> None:
+        if period < 1:
+            raise ValueError(f"SMA period must be >= 1, got {period}")
+        self._period = period
+        self._buf: deque[float] = deque(maxlen=period)
+        self._sum: float = 0.0
+
+    def update(self, value: float) -> None:
+        """Add a value. Evicts oldest if at capacity.
+
+        Callers must pass float, not Decimal. The Decimal-to-float
+        conversion happens at the IndicatorCalculator boundary.
+        """
+        if len(self._buf) == self._period:
+            self._sum -= self._buf[0]
+        self._buf.append(value)
+        self._sum += value
+
+    @property
+    def value(self) -> float | None:
+        """Current SMA, or None if not warm."""
+        if len(self._buf) < self._period:
+            return None
+        return self._sum / self._period
+
+    @property
+    def is_warm(self) -> bool:
+        """True when buffer has enough values for a valid SMA."""
+        return len(self._buf) >= self._period
+
+    @property
+    def count(self) -> int:
+        """Number of values currently in the buffer."""
+        return len(self._buf)
 
 
 @dataclass(frozen=True)
@@ -22,19 +68,18 @@ class IndicatorSet:
     prev_* fields hold the previous candle's SMA values.
     """
 
-    sma_fast: Decimal | None = None
-    sma_slow: Decimal | None = None
-    prev_sma_fast: Decimal | None = None
-    prev_sma_slow: Decimal | None = None
+    sma_fast: float | None = None
+    sma_slow: float | None = None
+    prev_sma_fast: float | None = None
+    prev_sma_slow: float | None = None
     bar_count: int = 0
 
 
 class IndicatorCalculator:
     """Computes SMA indicators from a candle stream.
 
-    Maintains two ring buffers (deques) with running Decimal sums
-    for O(1) SMA computation per candle. One deque per period.
-    Decimal running sums have zero accumulated drift.
+    Composes two SMA instances (fast + slow). Converts Decimal → float
+    at the process_candle boundary.
     """
 
     def __init__(
@@ -42,76 +87,38 @@ class IndicatorCalculator:
         fast_period: int = 20,
         slow_period: int = 200,
     ) -> None:
-        self._fast_period = fast_period
-        self._slow_period = slow_period
-        self._fast_buf: deque[Decimal] = deque(maxlen=fast_period)
-        self._slow_buf: deque[Decimal] = deque(maxlen=slow_period)
-        self._fast_sum = Decimal(0)
-        self._slow_sum = Decimal(0)
-        self._prev_fast: Decimal | None = None
-        self._prev_slow: Decimal | None = None
+        self._fast = SMA(fast_period)
+        self._slow = SMA(slow_period)
 
     def process_candle(self, candle: Bar) -> IndicatorSet:
         """Add candle to buffer and compute indicators.
 
-        Running sum update: subtract evicted value (if at capacity),
-        add new close, divide by length.
+        Decimal → float conversion happens here at the boundary.
         """
-        close = candle.close
+        close = float(candle.close)  # Decimal → float at boundary
+        # TODO(step4): Add finite check when data pipeline matures
 
         # Save current SMAs as previous before updating
-        prev_fast = self._compute_sma(self._fast_buf, self._fast_sum, self._fast_period)
-        prev_slow = self._compute_sma(self._slow_buf, self._slow_sum, self._slow_period)
+        prev_fast = self._fast.value
+        prev_slow = self._slow.value
 
-        # Update fast buffer
-        if len(self._fast_buf) == self._fast_period:
-            self._fast_sum -= self._fast_buf[0]
-        self._fast_buf.append(close)
-        self._fast_sum += close
-
-        # Update slow buffer
-        if len(self._slow_buf) == self._slow_period:
-            self._slow_sum -= self._slow_buf[0]
-        self._slow_buf.append(close)
-        self._slow_sum += close
-
-        # Compute current SMAs
-        current_fast = self._compute_sma(
-            self._fast_buf,
-            self._fast_sum,
-            self._fast_period,
-        )
-        current_slow = self._compute_sma(
-            self._slow_buf,
-            self._slow_sum,
-            self._slow_period,
-        )
+        self._fast.update(close)
+        self._slow.update(close)
 
         return IndicatorSet(
-            sma_fast=current_fast,
-            sma_slow=current_slow,
+            sma_fast=self._fast.value,
+            sma_slow=self._slow.value,
             prev_sma_fast=prev_fast,
             prev_sma_slow=prev_slow,
-            bar_count=len(self._slow_buf),
+            bar_count=self._slow.count,
         )
 
     @property
     def bar_count(self) -> int:
         """Number of candles in the slow buffer (max = slow_period)."""
-        return len(self._slow_buf)
+        return self._slow.count
 
     @property
     def is_warm(self) -> bool:
         """True if enough candles for full SMA-slow calculation."""
-        return len(self._slow_buf) >= self._slow_period
-
-    @staticmethod
-    def _compute_sma(
-        buf: deque[Decimal],
-        running_sum: Decimal,
-        period: int,
-    ) -> Decimal | None:
-        """Compute SMA from running sum. Returns None if not enough data."""
-        if len(buf) < period:
-            return None
-        return running_sum / Decimal(period)
+        return self._slow.is_warm

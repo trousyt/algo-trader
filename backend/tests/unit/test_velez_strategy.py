@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from app.broker.types import Bar, Position, Side
 from app.config import VelezConfig
 from app.engine.indicators import IndicatorSet
@@ -26,10 +28,10 @@ def _default_config(**overrides: object) -> VelezConfig:
 
 def _warm_indicators(
     *,
-    sma_fast: Decimal = Decimal("150.00"),
-    sma_slow: Decimal = Decimal("149.50"),
-    prev_sma_fast: Decimal = Decimal("149.90"),
-    prev_sma_slow: Decimal = Decimal("149.50"),
+    sma_fast: float = 150.0,
+    sma_slow: float = 149.5,
+    prev_sma_fast: float = 149.9,
+    prev_sma_slow: float = 149.5,
     bar_count: int = 200,
 ) -> IndicatorSet:
     """Create an IndicatorSet that passes the warm-up check."""
@@ -111,8 +113,8 @@ class TestShouldLong:
         bar = _setup_bar()
         # Spread = |160 - 150| = 10. price=152. 10/152*100 = 6.6% > 2%
         indicators = _warm_indicators(
-            sma_fast=Decimal("160.00"),
-            sma_slow=Decimal("150.00"),
+            sma_fast=160.0,
+            sma_slow=150.0,
         )
         assert s.should_long(bar, indicators) is False
 
@@ -121,12 +123,12 @@ class TestShouldLong:
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         bar = _setup_bar()
         # Current gap = 150 - 149.50 = 0.50
-        # Previous gap = 150 - 149.40 = 0.60 → gap narrowing
+        # Previous gap = 150 - 149.40 = 0.60 -> gap narrowing
         indicators = _warm_indicators(
-            sma_fast=Decimal("150.00"),
-            sma_slow=Decimal("149.50"),
-            prev_sma_fast=Decimal("150.00"),
-            prev_sma_slow=Decimal("149.40"),
+            sma_fast=150.0,
+            sma_slow=149.5,
+            prev_sma_fast=150.0,
+            prev_sma_slow=149.4,
         )
         assert s.should_long(bar, indicators) is False
 
@@ -135,10 +137,10 @@ class TestShouldLong:
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         bar = _setup_bar()
         indicators = _warm_indicators(
-            sma_fast=Decimal("149.00"),
-            sma_slow=Decimal("149.50"),
-            prev_sma_fast=Decimal("148.50"),
-            prev_sma_slow=Decimal("149.50"),
+            sma_fast=149.0,
+            sma_slow=149.5,
+            prev_sma_fast=148.5,
+            prev_sma_slow=149.5,
         )
         assert s.should_long(bar, indicators) is False
 
@@ -170,25 +172,25 @@ class TestShouldLong:
         assert s.should_long(bar, indicators) is True
 
     def test_boundary_spread_at_threshold_is_false(self) -> None:
-        """Spread exactly at threshold% → False (exclusive)."""
+        """Spread exactly at threshold% -> False (exclusive)."""
         s = VelezStrategy(
             symbol="AAPL",
-            config=_default_config(tightness_threshold_pct=Decimal("2.0")),
+            config=_default_config(tightness_threshold_pct=2.0),
         )
         bar = _setup_bar()  # close=152
-        # Spread / price * 100 = 2.0% exactly → should be False
+        # Spread / price * 100 = 2.0% exactly -> should be False
         # spread = sma_fast - sma_slow = X
-        # X / 152 * 100 = 2.0 → X = 3.04
+        # X / 152 * 100 = 2.0 -> X = 3.04
         indicators = _warm_indicators(
-            sma_fast=Decimal("151.52"),
-            sma_slow=Decimal("148.48"),
-            prev_sma_fast=Decimal("151.00"),
-            prev_sma_slow=Decimal("148.48"),
+            sma_fast=151.52,
+            sma_slow=148.48,
+            prev_sma_fast=151.0,
+            prev_sma_slow=148.48,
         )
         assert s.should_long(bar, indicators) is False
 
     def test_zero_range_candle_not_strong(self) -> None:
-        """Zero range (high == low) → not strong → False."""
+        """Zero range (high == low) -> not strong -> False."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         bar = make_bar(
             open=Decimal("150.00"),
@@ -212,7 +214,7 @@ class TestShouldLong:
         assert s.should_long(bar, indicators) is False
 
 
-# --- Entry and stop prices ---
+# --- Entry and stop prices (Decimal) ---
 
 
 class TestEntryAndStopPrices:
@@ -310,12 +312,12 @@ class TestTrailingStop:
         bar = make_green_bar()
         pos = _position()
         indicators = _warm_indicators()
-        # Green bar in WATCHING → no stop change
+        # Green bar in WATCHING -> no stop change
         result = s.should_update_stop(bar, pos, indicators)
         assert result is None
 
     def test_red_candle_starts_pullback(self) -> None:
-        """WATCHING + red candle → PULLING_BACK, returns None."""
+        """WATCHING + red candle -> PULLING_BACK, returns None."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
@@ -324,18 +326,18 @@ class TestTrailingStop:
         assert result is None  # No stop change yet
 
     def test_pullback_plus_1_green_returns_none(self) -> None:
-        """PULLING_BACK + 1 green → still need 2."""
+        """PULLING_BACK + 1 green -> still need 2."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
         # Enter PULLING_BACK
         s.should_update_stop(make_red_bar(low=Decimal("148.00")), pos, indicators)
-        # 1 green — not enough
+        # 1 green -- not enough
         result = s.should_update_stop(make_green_bar(), pos, indicators)
         assert result is None
 
     def test_pullback_plus_2_greens_returns_pullback_low(self) -> None:
-        """PULLING_BACK + 2 greens → trail stop to pullback low."""
+        """PULLING_BACK + 2 greens -> trail stop to pullback low."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
@@ -351,7 +353,7 @@ class TestTrailingStop:
         assert result == Decimal("148.00")
 
     def test_multiple_reds_use_lowest_low(self) -> None:
-        """Multiple consecutive reds → pullback low = lowest."""
+        """Multiple consecutive reds -> pullback low = lowest."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
@@ -372,7 +374,7 @@ class TestTrailingStop:
         assert result == Decimal("147.00")
 
     def test_green_then_red_resets_count(self) -> None:
-        """Green, then red → green count resets, need 2 fresh."""
+        """Green, then red -> green count resets, need 2 fresh."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
@@ -397,11 +399,11 @@ class TestTrailingStop:
         assert result == Decimal("147.50")
 
     def test_after_trail_new_red_starts_new_cycle(self) -> None:
-        """TRAILING + red → WATCHING → new pullback cycle."""
+        """TRAILING + red -> WATCHING -> new pullback cycle."""
         s = VelezStrategy(symbol="AAPL", config=_default_config())
         pos = _position()
         indicators = _warm_indicators()
-        # Cycle 1: pullback + 2 greens → trail
+        # Cycle 1: pullback + 2 greens -> trail
         s.should_update_stop(
             make_red_bar(low=Decimal("148.00")),
             pos,
@@ -409,7 +411,7 @@ class TestTrailingStop:
         )
         s.should_update_stop(make_green_bar(), pos, indicators)
         s.should_update_stop(make_green_bar(), pos, indicators)
-        # Now in TRAILING. Red → back to WATCHING
+        # Now in TRAILING. Red -> back to WATCHING
         s.should_update_stop(
             make_red_bar(low=Decimal("149.00")),
             pos,
@@ -494,7 +496,7 @@ class TestMaxRunExit:
         )
         s.should_update_stop(make_green_bar(), pos, indicators)
         s.should_update_stop(make_green_bar(), pos, indicators)
-        # 1 strong candle — not at max run yet
+        # 1 strong candle -- not at max run yet
         assert s.should_exit(_setup_bar(), pos, indicators) is False
 
     def test_true_after_max_run_candles(self) -> None:
@@ -541,7 +543,7 @@ class TestMaxRunExit:
             low=Decimal("149.00"),
         )
         s.should_exit(weak, pos, indicators)
-        # 2 more strong — still not 3 consecutive
+        # 2 more strong -- still not 3 consecutive
         s.should_exit(_setup_bar(), pos, indicators)
         assert s.should_exit(_setup_bar(), pos, indicators) is False
 
@@ -569,7 +571,7 @@ class TestMaxRunExit:
             low=Decimal("149.00"),
         )
         s.should_exit(doji, pos, indicators)
-        # 2 more strong — not 3 consecutive
+        # 2 more strong -- not 3 consecutive
         s.should_exit(_setup_bar(), pos, indicators)
         assert s.should_exit(_setup_bar(), pos, indicators) is False
 
@@ -597,7 +599,7 @@ class TestHelperMethods:
 
     def test_is_doji(self) -> None:
         s = VelezStrategy(symbol="AAPL", config=_default_config())
-        # Body = 0.05, range = 2.0 → body% = 2.5% < 10%
+        # Body = 0.05, range = 2.0 -> body% = 2.5% < 10%
         doji = make_bar(
             open=Decimal("150.00"),
             close=Decimal("150.05"),
@@ -616,4 +618,4 @@ class TestHelperMethods:
             high=Decimal("153.00"),
             low=Decimal("149.00"),
         )
-        assert s._body_pct(bar) == Decimal("50.0")
+        assert s._body_pct(bar) == pytest.approx(50.0)
