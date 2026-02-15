@@ -65,16 +65,8 @@ class VelezConfig(BaseModel):
     sma_fast: int = Field(default=20, ge=5, le=50)
     sma_slow: int = Field(default=200, ge=100, le=500)
     candle_interval_minutes: int = Field(default=2)
-    tightness_threshold_pct: Decimal = Field(
-        default=Decimal("2.0"),
-        ge=Decimal("0.5"),
-        le=Decimal("5.0"),
-    )
-    strong_candle_body_pct: Decimal = Field(
-        default=Decimal("50.0"),
-        ge=Decimal("30.0"),
-        le=Decimal("80.0"),
-    )
+    tightness_threshold_pct: float = Field(default=2.0, ge=0.5, le=5.0)
+    strong_candle_body_pct: float = Field(default=50.0, ge=30.0, le=80.0)
     stop_buffer_pct: Decimal = Field(
         default=Decimal("0.1"),
         ge=Decimal("0.05"),
@@ -87,7 +79,7 @@ class VelezConfig(BaseModel):
     )
     buy_stop_expiry_candles: int = Field(default=1, ge=1, le=5)
     max_run_candles: int = Field(default=3, ge=2, le=10)
-    doji_threshold_pct: Decimal = Field(default=Decimal("10.0"))
+    doji_threshold_pct: float = Field(default=10.0)
 
     @field_validator("candle_interval_minutes")
     @classmethod

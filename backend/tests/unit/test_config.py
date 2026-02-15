@@ -56,10 +56,14 @@ class TestDecimalFields:
         assert isinstance(config.risk.max_position_pct, Decimal)
         assert isinstance(config.risk.max_daily_loss_pct, Decimal)
 
-    def test_velez_fields_are_decimal(self) -> None:
+    def test_velez_signal_fields_are_float(self) -> None:
         config = AppConfig()
-        assert isinstance(config.velez.tightness_threshold_pct, Decimal)
-        assert isinstance(config.velez.strong_candle_body_pct, Decimal)
+        assert isinstance(config.velez.tightness_threshold_pct, float)
+        assert isinstance(config.velez.strong_candle_body_pct, float)
+        assert isinstance(config.velez.doji_threshold_pct, float)
+
+    def test_velez_money_fields_are_decimal(self) -> None:
+        config = AppConfig()
         assert isinstance(config.velez.stop_buffer_pct, Decimal)
         assert isinstance(config.velez.stop_buffer_min, Decimal)
 
