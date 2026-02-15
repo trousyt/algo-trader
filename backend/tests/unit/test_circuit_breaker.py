@@ -80,7 +80,7 @@ class TestCircuitBreakerDailyLoss:
         cb = _make_cb(max_daily_loss_pct=Decimal("0.03"))
         # Max loss = 25000 * 0.03 = 750
         cb.record_trade(Decimal("-750"))
-        can, reason = cb.can_trade()
+        can, _reason = cb.can_trade()
         assert can is False
 
     def test_wins_offset_losses(self) -> None:

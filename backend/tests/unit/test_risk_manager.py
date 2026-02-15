@@ -50,22 +50,21 @@ async def _insert_open_entry(
 ) -> None:
     """Insert a non-terminal entry order into the DB."""
     now = format_timestamp(utc_now())
-    async with session_factory() as session:
-        async with session.begin():
-            session.add(
-                OrderStateModel(
-                    local_id=f"ord-{symbol}-{state}-{now}",
-                    correlation_id=f"corr-{symbol}",
-                    symbol=symbol,
-                    side="buy",
-                    order_type="stop",
-                    order_role=OrderRole.ENTRY.value,
-                    qty_requested=Decimal("10"),
-                    state=state,
-                    created_at=now,
-                    updated_at=now,
-                )
+    async with session_factory() as session, session.begin():
+        session.add(
+            OrderStateModel(
+                local_id=f"ord-{symbol}-{state}-{now}",
+                correlation_id=f"corr-{symbol}",
+                symbol=symbol,
+                side="buy",
+                order_type="stop",
+                order_role=OrderRole.ENTRY.value,
+                qty_requested=Decimal("10"),
+                state=state,
+                created_at=now,
+                updated_at=now,
             )
+        )
 
 
 class TestRiskManagerApproved:
@@ -257,22 +256,21 @@ class TestRiskManagerTerminalOrdersNotCounted:
 
         # Insert a stop-loss order (not entry)
         now = format_timestamp(utc_now())
-        async with db_session_factory() as session:
-            async with session.begin():
-                session.add(
-                    OrderStateModel(
-                        local_id="ord-stop-1",
-                        correlation_id="corr-1",
-                        symbol="AAPL",
-                        side="sell",
-                        order_type="stop",
-                        order_role=OrderRole.STOP_LOSS.value,
-                        qty_requested=Decimal("10"),
-                        state=OrderState.ACCEPTED.value,
-                        created_at=now,
-                        updated_at=now,
-                    )
+        async with db_session_factory() as session, session.begin():
+            session.add(
+                OrderStateModel(
+                    local_id="ord-stop-1",
+                    correlation_id="corr-1",
+                    symbol="AAPL",
+                    side="sell",
+                    order_type="stop",
+                    order_role=OrderRole.STOP_LOSS.value,
+                    qty_requested=Decimal("10"),
+                    state=OrderState.ACCEPTED.value,
+                    created_at=now,
+                    updated_at=now,
                 )
+            )
 
         sizer = PositionSizer(config)
         rm = RiskManager(config, broker, cb, sizer, db_session_factory)
