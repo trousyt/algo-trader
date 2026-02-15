@@ -30,10 +30,20 @@ class OrderStateModel(Base):
     symbol: Mapped[str] = mapped_column(String, nullable=False)
     side: Mapped[str] = mapped_column(
         String,
-        CheckConstraint("side IN ('long', 'short')", name="ck_order_state_side"),
+        CheckConstraint("side IN ('buy', 'sell')", name="ck_order_state_side"),
         nullable=False,
     )
     order_type: Mapped[str] = mapped_column(String, nullable=False)
+    order_role: Mapped[str] = mapped_column(
+        String,
+        CheckConstraint(
+            "order_role IN ('entry', 'stop_loss', 'exit_market')",
+            name="ck_order_state_role",
+        ),
+        nullable=False,
+        server_default="entry",
+    )
+    strategy: Mapped[str | None] = mapped_column(String, nullable=True)
     qty_requested: Mapped[DecimalText] = mapped_column(DecimalText, nullable=False)
     qty_filled: Mapped[DecimalText] = mapped_column(
         DecimalText, nullable=False, server_default="0"
@@ -58,6 +68,7 @@ class OrderStateModel(Base):
         Index("ix_order_state_correlation_id", "correlation_id"),
         Index("ix_order_state_state", "state"),
         Index("ix_order_state_symbol_created", "symbol", "created_at"),
+        Index("ix_order_state_parent_id", "parent_id"),
     )
 
 
