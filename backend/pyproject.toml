@@ -1,0 +1,76 @@
+[project]
+name = "algo-trader"
+version = "0.1.0"
+description = "Algorithmic trading system for US equities"
+requires-python = ">=3.12"
+dependencies = [
+    "alpaca-py>=0.43",
+    "fastapi>=0.115",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]>=2.0.38",
+    "aiosqlite",
+    "alembic",
+    "pandas>=2.0",
+    "pandas-ta>=0.3",
+    "numpy",
+    "pydantic-settings>=2.0",
+    "exchange-calendars>=4.12",
+    "apscheduler>=3.11,<4.0",
+    "structlog",
+    "click",
+    "httpx",
+]
+
+[project.scripts]
+algo-trader = "app.cli.commands:cli"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "hypothesis",
+    "mypy",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "UP042", # project convention: (str, Enum) not StrEnum
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: requires Alpaca API keys (deselect with '-m \"not integration\"')",
+    "slow: slow tests that may take over 60 seconds",
+]
