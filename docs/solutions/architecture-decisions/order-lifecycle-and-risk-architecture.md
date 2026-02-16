@@ -154,6 +154,14 @@ Each test gets a fresh database. No cleanup needed. `expire_on_commit=False` pre
 
 `tests/factories.py` provides `make_signal()`, `make_account_info()` with sensible defaults. Tests override only what matters, keeping test code focused on the behavior being tested.
 
+### 10. Candle Counter: In-Memory Transient State
+
+**Decision**: OrderManager tracks candle counts for pending entries in an in-memory `dict[str, int]`, not in the database.
+
+**Why**: This state is transient — it only matters while the order is pending. On restart, `cancel_all_pending()` closes unfilled entries anyway, so the counter doesn't need persistence. Storing it in the DB would bloat the schema with data that's only relevant for seconds-to-minutes.
+
+**Cleanup**: Entries are removed from the dict when the order reaches a terminal state (filled, canceled, etc.), preventing memory leaks.
+
 ## Cross-References
 
 - [Decimal for Money, Float for Math](decimal-for-money-float-for-math.md) — boundary between risk (Decimal) and indicators (float)
