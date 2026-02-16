@@ -971,34 +971,34 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - `backend/tests/unit/test_backtest_executor.py` (new)
 
 **Tasks:**
-- [ ] Implement `BacktestExecution` class with internal order book and position tracking
-- [ ] Implement ALL 13 BrokerAdapter protocol methods (match FakeBrokerAdapter pattern)
-- [ ] Add sync convenience properties: `equity`, `cash`, `open_position_count` (avoid async in hot loop)
-- [ ] Use `OrderRole` enum (not magic strings) for fill.order_role
-- [ ] Implement `process_bar()` — stop-loss check, buy-stop check, market order check (priority order)
-- [ ] Implement `update_market_prices(bar)` — updates position unrealized P&L each bar
-- [ ] Fill price clamping: after slippage, clamp buy fills to `bar.high`, sell fills to `bar.low`
-- [ ] Fill price floor: `max(fill_price, Decimal("0.01"))` to prevent negative prices
+- [x] Implement `BacktestExecution` class with internal order book and position tracking
+- [x] Implement ALL 13 BrokerAdapter protocol methods (match FakeBrokerAdapter pattern)
+- [x] Add sync convenience properties: `equity`, `cash`, `open_position_count` (avoid async in hot loop)
+- [x] Use `OrderRole` enum (not magic strings) for fill.order_role
+- [x] Implement `process_bar()` — stop-loss check, buy-stop check, market order check (priority order)
+- [x] Implement `update_market_prices(bar)` — updates position unrealized P&L each bar
+- [x] Fill price clamping: after slippage, clamp buy fills to `bar.high`, sell fills to `bar.low`
+- [x] Fill price floor: `max(fill_price, Decimal("0.01"))` to prevent negative prices
 - [ ] Volume fraction warning: log when `fill.qty > bar.volume * 0.10`
-- [ ] Buy-stop fill: trigger when `bar.high >= stop_price`, fill at `min(max(bar.open, stop_price) + slippage, bar.high)`
-- [ ] Stop-loss fill: trigger when `bar.low <= stop_price`, fill at `max(min(bar.open, stop_price) - slippage, bar.low)`
-- [ ] Market fill: fill at `bar.open ± slippage` (clamped to bar range)
-- [ ] Gap fill handling: gap past trigger → fill at open (clamped, worse price)
-- [ ] Position tracking: open/close, compute unrealized P&L from latest bar
-- [ ] Account tracking: cash, equity = cash + position market values, buying_power = cash
-- [ ] `cancel_all_pending()` method for EOD cleanup
-- [ ] Order cancellation removes from pending book
-- [ ] Unit tests: buy-stop triggers at exact price, above price, below price (no fill)
-- [ ] Unit tests: stop-loss triggers at exact price, below price, above price (no fill)
-- [ ] Unit tests: gap up fill, gap down fill, cross-day gap (Friday→Monday)
-- [ ] Unit tests: slippage clamped to bar boundaries
-- [ ] Unit tests: fill price floor (no negative prices)
-- [ ] Unit tests: position opens and closes correctly, P&L calculation
-- [ ] Unit tests: account equity tracks position value
-- [ ] Unit tests: multiple symbols independent
-- [ ] Unit tests: stop-loss not triggered on same bar as entry (for same symbol)
-- [ ] Unit tests: market orders fill on next bar
-- [ ] Unit tests: cancel order removes from pending
+- [x] Buy-stop fill: trigger when `bar.high >= stop_price`, fill at `min(max(bar.open, stop_price) + slippage, bar.high)`
+- [x] Stop-loss fill: trigger when `bar.low <= stop_price`, fill at `max(min(bar.open, stop_price) - slippage, bar.low)`
+- [x] Market fill: fill at `bar.open ± slippage` (clamped to bar range)
+- [x] Gap fill handling: gap past trigger → fill at open (clamped, worse price)
+- [x] Position tracking: open/close, compute unrealized P&L from latest bar
+- [x] Account tracking: cash, equity = cash + position market values, buying_power = cash
+- [x] `cancel_all_pending()` method for EOD cleanup
+- [x] Order cancellation removes from pending book
+- [x] Unit tests: buy-stop triggers at exact price, above price, below price (no fill)
+- [x] Unit tests: stop-loss triggers at exact price, below price, above price (no fill)
+- [x] Unit tests: gap up fill, gap down fill, cross-day gap (Friday→Monday)
+- [x] Unit tests: slippage clamped to bar boundaries
+- [x] Unit tests: fill price floor (no negative prices)
+- [x] Unit tests: position opens and closes correctly, P&L calculation
+- [x] Unit tests: account equity tracks position value
+- [x] Unit tests: multiple symbols independent
+- [x] Unit tests: stop-loss not triggered on same bar as entry (for same symbol)
+- [x] Unit tests: market orders fill on next bar
+- [x] Unit tests: cancel order removes from pending
 - [ ] Parameterize fill-trigger tests (pytest.mark.parametrize) to reduce duplication
 
 **Acceptance:**
