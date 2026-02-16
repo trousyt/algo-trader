@@ -24,7 +24,7 @@ def _make_config() -> SimpleNamespace:
         api_key="test-key",
         secret_key="test-secret",
         paper=True,
-        data_feed="iex",
+        feed="iex",
     )
 
 
@@ -70,7 +70,7 @@ class TestConnect:
             api_key="",
             secret_key="test-secret",
             paper=True,
-            data_feed="iex",
+            feed="iex",
         )
         provider = AlpacaDataProvider(config)
         with pytest.raises(BrokerAuthError, match="API key"):
@@ -81,7 +81,7 @@ class TestConnect:
             api_key="test-key",
             secret_key="",
             paper=True,
-            data_feed="iex",
+            feed="iex",
         )
         provider = AlpacaDataProvider(config)
         with pytest.raises(BrokerAuthError, match="secret key"):
@@ -160,9 +160,11 @@ class TestGetHistoricalBars:
         mock_client = MagicMock()
         mock_hist_cls.return_value = mock_client
 
-        # Mock response: dict of symbol -> list of bars
+        # Mock response: BarSet-like object with .data dict
         mock_bar = _make_alpaca_bar("AAPL", 150.0)
-        mock_client.get_stock_bars.return_value = {"AAPL": [mock_bar]}
+        mock_client.get_stock_bars.return_value = SimpleNamespace(
+            data={"AAPL": [mock_bar]},
+        )
 
         provider = AlpacaDataProvider(_make_config())
         await provider.connect()

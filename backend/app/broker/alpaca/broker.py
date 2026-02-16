@@ -127,7 +127,7 @@ class AlpacaBrokerAdapter:
             if not self._connected_event.is_set():
                 return
 
-            if self._stream is not None:
+            if self._stream is not None and getattr(self._stream, "_loop", None):
                 self._stream.stop()
 
             if self._ws_thread is not None and self._ws_thread.is_alive():

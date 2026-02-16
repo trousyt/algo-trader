@@ -12,10 +12,12 @@ import asyncio
 import threading
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from typing import Any, Self
 
 import structlog
 from alpaca.common.exceptions import APIError
+from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.live import StockDataStream
 from alpaca.data.requests import (
@@ -48,6 +50,15 @@ _TIMEFRAME_MAP: dict[str, TimeFrame] = {
     "15Min": TimeFrame(15, TimeFrameUnit.Minute),
     "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
     "1Day": TimeFrame(1, TimeFrameUnit.Day),
+}
+
+# Days of lookback per bar (generous to cover weekends/holidays)
+_LOOKBACK_DAYS: dict[str, int] = {
+    "1Min": 1,
+    "5Min": 1,
+    "15Min": 1,
+    "1Hour": 2,
+    "1Day": 3,
 }
 
 
@@ -132,7 +143,7 @@ class AlpacaDataProvider:
             self._stream = StockDataStream(
                 api_key,
                 secret_key,
-                feed=self._config.data_feed,
+                feed=DataFeed(self._config.feed),
             )
             self._executor = ThreadPoolExecutor(max_workers=4)
             self._main_loop = asyncio.get_event_loop()
@@ -146,7 +157,7 @@ class AlpacaDataProvider:
             if not self._connected_event.is_set():
                 return
 
-            if self._stream is not None:
+            if self._stream is not None and getattr(self._stream, "_loop", None):
                 self._stream.stop()
 
             if self._ws_thread is not None and self._ws_thread.is_alive():
@@ -253,9 +264,16 @@ class AlpacaDataProvider:
             msg = f"Unsupported timeframe: {timeframe}"
             raise ValueError(msg)
 
+        # Alpaca requires a start date — compute generous lookback
+        lookback_days = _LOOKBACK_DAYS.get(timeframe, 30)
+        start = datetime.now(tz=UTC) - timedelta(
+            days=max(lookback_days * count, 7),
+        )
+
         request = StockBarsRequest(
-            symbol_or_symbols=symbol,
+            symbol_or_symbols=[symbol],
             timeframe=tf,
+            start=start,
             limit=count,
         )
 
@@ -266,7 +284,7 @@ class AlpacaDataProvider:
             request,
         )
 
-        alpaca_bars = response.get(symbol, [])  # type: ignore[union-attr]
+        alpaca_bars = response.data.get(symbol, [])  # type: ignore[union-attr]
         return [alpaca_bar_to_bar(b) for b in alpaca_bars]
 
     async def get_latest_quote(self, symbol: str) -> Quote:

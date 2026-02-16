@@ -105,6 +105,24 @@ class TestRiskValidation:
         with pytest.raises(ValidationError):
             RiskConfig(consecutive_loss_pause=11)
 
+    def test_emergency_stop_pct_default(self) -> None:
+        config = RiskConfig()
+        assert config.emergency_stop_pct == Decimal("0.02")
+
+    def test_emergency_stop_pct_too_low(self) -> None:
+        with pytest.raises(ValidationError):
+            RiskConfig(emergency_stop_pct=Decimal("0.001"))
+
+    def test_emergency_stop_pct_too_high(self) -> None:
+        with pytest.raises(ValidationError):
+            RiskConfig(emergency_stop_pct=Decimal("0.15"))
+
+    def test_emergency_stop_pct_at_bounds(self) -> None:
+        low = RiskConfig(emergency_stop_pct=Decimal("0.005"))
+        assert low.emergency_stop_pct == Decimal("0.005")
+        high = RiskConfig(emergency_stop_pct=Decimal("0.10"))
+        assert high.emergency_stop_pct == Decimal("0.10")
+
 
 class TestWatchlistValidation:
     """Test watchlist symbol validation."""

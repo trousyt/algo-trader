@@ -200,6 +200,38 @@ class TestOrderStateMachineInit:
             assert sm.state == state
 
 
+class TestForceState:
+    """force_state() -- security-gated bypass for reconciliation."""
+
+    def test_force_state_with_reconciliation_flag(self) -> None:
+        sm = OrderStateMachine(OrderState.SUBMITTED)
+        sm.force_state(OrderState.FILLED, _reconciliation=True)
+        assert sm.state == OrderState.FILLED
+
+    def test_force_state_skips_transition_validation(self) -> None:
+        """Can jump across states that transition() would reject."""
+        sm = OrderStateMachine(OrderState.PENDING_SUBMIT)
+        sm.force_state(OrderState.FILLED, _reconciliation=True)
+        assert sm.state == OrderState.FILLED
+
+    def test_force_state_works_from_terminal_state(self) -> None:
+        """Can force out of terminal states (e.g., correcting a wrong terminal)."""
+        sm = OrderStateMachine(OrderState.CANCELED)
+        assert sm.is_terminal
+        sm.force_state(OrderState.FILLED, _reconciliation=True)
+        assert sm.state == OrderState.FILLED
+
+    def test_force_state_without_flag_raises(self) -> None:
+        sm = OrderStateMachine(OrderState.SUBMITTED)
+        with pytest.raises(RuntimeError, match="reconciliation"):
+            sm.force_state(OrderState.FILLED)
+
+    def test_force_state_with_flag_false_raises(self) -> None:
+        sm = OrderStateMachine(OrderState.SUBMITTED)
+        with pytest.raises(RuntimeError, match="reconciliation"):
+            sm.force_state(OrderState.FILLED, _reconciliation=False)
+
+
 class TestInvalidTransitionError:
     """InvalidTransitionError exception formatting."""
 

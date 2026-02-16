@@ -30,6 +30,9 @@ data/
 .ruff_cache/
 .pytest_cache/
 
+# Hypothesis
+.hypothesis/
+
 # OS
 Thumbs.db
 .DS_Store

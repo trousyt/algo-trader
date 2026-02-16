@@ -56,6 +56,11 @@ class RiskConfig(BaseModel):
     )
     max_open_positions: int = Field(default=5, ge=1, le=20)
     consecutive_loss_pause: int = Field(default=3, ge=2, le=10)
+    emergency_stop_pct: Decimal = Field(
+        default=Decimal("0.02"),
+        ge=Decimal("0.005"),
+        le=Decimal("0.10"),
+    )
 
 
 class VelezConfig(BaseModel):
