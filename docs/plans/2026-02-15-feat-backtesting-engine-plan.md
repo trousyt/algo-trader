@@ -1026,7 +1026,7 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - [x] Raise `BacktestError` if zero bars for any symbol
 - [x] Unit tests with mocked client: conversion, sorting, filtering, zero-bars error
 - [x] Unit test: mock using `SimpleNamespace(data={"AAPL": [...]})` for BarSet
-- [ ] Integration test (marked @integration): fetch 1 week AAPL from Alpaca, verify non-empty and sorted
+- [x] Integration test (marked @integration): fetch 1 week AAPL from Alpaca, verify non-empty and sorted
 
 **Acceptance:**
 - Returns correctly sorted, merged bars for multiple symbols
@@ -1059,7 +1059,7 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - [x] Store results in DB, including params JSON (verify no credentials stored)
 - [x] Progress logging: day count at transitions, total elapsed + bars/sec at end
 - [x] Error handling: try/except around strategy evaluation (log and skip, don't crash)
-- [ ] Unit test: known-trade verification (handcraft 5-10 bars, manually calculate every fill)
+- [x] Unit test: known-trade verification (handcraft 5-10 bars, manually calculate every fill)
 - [x] Unit test: warm-up period (no signals until `bar_count >= required_history`)
 - [x] Unit test: CircuitBreaker trips mid-backtest
 - [x] Unit test: max_open_positions blocks new entries
@@ -1224,10 +1224,10 @@ Could compute all signals at once using pandas vectorized operations (much faste
 ### Quality Gates
 
 - [x] All unit tests pass (config, metrics, executor, runner)
-- [ ] Known-trade verification test: handcrafted bars, manually verified fills and P&L
+- [x] Known-trade verification test: handcrafted bars, manually verified fills and P&L
 - ~~Money conservation property test~~ — REMOVED: covered deterministically by known-trade test
 - ~~Integration test: full backtest run with known dataset~~ — REMOVED: redundant with known-trade test
-- [ ] Integration test: BacktestDataLoader fetches real Alpaca data with Adjustment.ALL
+- [x] Integration test: BacktestDataLoader fetches real Alpaca data with Adjustment.ALL
 - [x] Params JSON credential exclusion test
 
 ---
