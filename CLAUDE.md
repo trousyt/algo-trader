@@ -148,22 +148,19 @@ When running review agents in the background, instruct each agent to write its f
 
 ### Docker Development
 
-All backend commands run inside Docker to ensure Linux-only code (signal handlers, async patterns) is tested on the target platform.
+Docker is for running code that needs the Linux runtime environment (signal handlers, TradingEngine, full e2e flows). Linting, type checking, and tests run on host for fast feedback — CI on ubuntu-latest is the authoritative Linux validation.
 
 | Task | Command |
 |------|---------|
 | Build | `docker compose build` |
-| Run tests | `docker compose run --rm app pytest tests/ -v` |
-| Run lint | `docker compose run --rm app ruff check app/ tests/` |
-| Run format check | `docker compose run --rm app ruff format --check app/ tests/` |
-| Run type check | `docker compose run --rm app mypy app/` |
+| Run TradingEngine | `docker compose up` |
 | Run CLI | `docker compose run --rm app config` |
 | Run backtest | `docker compose run --rm app backtest --strategy velez --symbols AAPL --start-date 2025-01-01 --end-date 2025-12-31` |
-| Run migrations | `docker compose run --rm app alembic upgrade head` |
 
 **When to use Docker vs. host:**
-- **Docker**: pytest, ruff check, ruff format --check, mypy, CLI commands (backtest, config), web server
-- **Host**: `alembic revision --autogenerate` (generates migration files on host filesystem), `ruff format` (auto-fix writes to host files)
+- **Docker**: TradingEngine (Step 7+), CLI smoke tests, e2e tests — code that needs Linux runtime
+- **Host**: ruff, mypy, pytest (unit + integration), alembic — platform-agnostic, fast feedback
+- **CI**: everything on Linux — authoritative safety net for platform edge cases
 
 ### README.md Maintenance
 
