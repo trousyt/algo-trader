@@ -74,6 +74,7 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - **Dataclasses**: `frozen=True` for value objects (Bar, Quote, IndicatorSet). Mutable dataclasses for state objects (Position, AccountInfo)
 - **Enums**: `(str, Enum)` for string-based enumerations (serialization-friendly)
 - **Constants**: Module-level `UPPER_SNAKE` — no magic numbers in logic
+- **Database tables**: Singular `snake_case` names (e.g. `backtest_run`, `order_event`, `trade`). Model class is `PascalCase` + `Model` suffix (e.g. `BacktestRunModel`). Never pluralize table names.
 
 ### TypeScript/React Style
 - **Formatter**: Prettier
