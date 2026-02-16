@@ -30,7 +30,7 @@ def alpaca_config() -> Any:
         api_key=api_key,
         secret_key=secret_key,
         paper=True,
-        data_feed="iex",
+        feed="iex",
     )
 
 
