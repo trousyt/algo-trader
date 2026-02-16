@@ -17,6 +17,7 @@ Algo-trader is an algorithmic trading system for US equities. It performs techni
 - **AI Role**: Advisory ONLY. AI provides analysis, commentary, and confidence scores as inputs to the deterministic strategy engine. AI does NOT make trade decisions autonomously.
 - **Notifications**: Discord webhooks (one-way initially; bot commands added later)
 - **Containerization**: Docker
+- **Platform**: Linux only. Development and production both run in Docker/Linux. Do not write Windows-specific code or platform-conditional branches. `SIGTERM`/`SIGINT` via `loop.add_signal_handler()` is the only signal handling pattern needed.
 
 ## Engineering Standards
 
@@ -56,6 +57,32 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - **Test-driven development** - Use `tdd` skill. Write failing test first, then minimal code to pass, then refactor. No production code without a failing test
 - **CLI smoke testing** - When changing CLI commands, run the actual CLI end-to-end (not just unit tests) to verify real output and error handling. **Safety gate**: before any CLI smoke test that touches the broker, run `cli config` and confirm `Paper: True`. Never run CLI smoke tests against a live trading account
 - **Comprehensive testing** - Unit tests, integration tests, e2e tests. All tests pass before merge
+
+### Plan Review Agents (curated list — do not auto-discover)
+
+When running `/deepen-plan`, `/plan_review`, or any plan/code review workflow, use ONLY this curated agent list. Do not dynamically discover agents.
+
+**Backend (Python) projects:**
+- `security-sentinel`
+- `performance-oracle`
+- `architecture-strategist`
+- `pattern-recognition-specialist`
+- `data-integrity-guardian`
+- `data-migration-expert`
+- `code-simplicity-reviewer`
+- `kieran-python-reviewer`
+
+**Frontend (Web/React/TS) projects:**
+- `kieran-typescript-reviewer`
+- `julik-frontend-races-reviewer`
+- `frontend-design`
+
+**Universal (all projects):**
+- `agent-native-reviewer`
+
+### Review Agent Result Persistence
+
+When running review agents in the background, instruct each agent to write its findings to `memory/reviewer-findings/{agent-name}-findings.md`. This avoids the empty background output file problem. Clean up findings after they've been synthesized into the plan.
 
 ### Python Style
 - **Formatter/Linter**: Ruff (replaces Black, Flake8, isort — single tool)
@@ -119,8 +146,20 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - Order state machine with crash recovery and broker reconciliation
 - Never commit API keys or secrets (`.env` + `.env.example`)
 
+### README.md Maintenance
+
+Keep `README.md` up to date as features are planned and implemented. This file is for **human consumption** — developers, contributors, and anyone evaluating the project. Update it when completing a plan or merging a feature. Required sections in order:
+
+1. **Title** — Project name + one-line description
+2. **Build/deploy status** — CI badges, build status
+3. **Overview** — High-level product vision and what the system does (2-3 paragraphs max)
+4. **Planned features** — Roadmap of what's built vs. what's coming, organized by phase
+5. **Usage instructions** — How to run the system (CLI commands, configuration, paper vs. live)
+6. **Compiling/dev instructions** — Prerequisites, setup, how to run tests, Docker
+7. **Troubleshooting** — Common issues and solutions
+
 ## Key Design Docs
 
-- README: `README.md` (keep up to date as development progresses)
+- README: `README.md`
 - Brainstorm: `docs/brainstorms/2026-02-13-algo-trader-brainstorm.md`
 - Phase 1 Plan: `docs/plans/2026-02-13-feat-phase-1-trading-engine-plan.md`
