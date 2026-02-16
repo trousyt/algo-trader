@@ -189,30 +189,23 @@ algo-trader stop    # Graceful shutdown
 
 ## Development
 
-### Docker (recommended)
+### Docker
 
-All backend commands run inside Docker to match the Linux production environment:
+Docker is used for running the TradingEngine, CLI smoke tests, and e2e tests — code that needs the Linux runtime. Linting, type checking, and tests run on host for fast feedback.
 
 ```bash
 # Build the container
 docker compose build
 
-# Run tests
-docker compose run --rm app pytest tests/ -v
-
-# Lint and format check
-docker compose run --rm app ruff check app/ tests/
-docker compose run --rm app ruff format --check app/ tests/
-
-# Type check
-docker compose run --rm app mypy app/
-
 # CLI commands
 docker compose run --rm app config
 docker compose run --rm app backtest --strategy velez --symbols AAPL --start-date 2025-01-01 --end-date 2025-12-31
+
+# Start trading engine (Step 7+)
+docker compose up
 ```
 
-### Host Setup (alternative)
+### Setup
 
 ```bash
 cd backend

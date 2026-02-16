@@ -10,6 +10,7 @@ FROM python:3.12-slim
 # --- Python environment vars (TODO 021) -----------------------------------
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV UV_NO_SYNC=true
 
 # --- Install uv (pinned, TODO 018) ----------------------------------------
 COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /bin/
