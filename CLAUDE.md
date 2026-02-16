@@ -50,10 +50,11 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - **Architectural review** - Run all architectural decisions through the `architecture-strategist` reviewer
 - **Frontend UI/UX** - Use `frontend-design` and `web-artifacts-builder` skills for all design recommendations and decisions. UI must be A+++: user friendly, powerful, logical, consistent
 - **Frontend code review** - All React/TypeScript code through `kieran-typescript-reviewer`
-- **Frontend browser testing** - Use `webapp-testing` skill for all front-end browser testing
+- **Frontend browser testing** - Use Claude in Chrome MCP tools or Playwright via `webapp-testing` skill for all front-end browser testing. Every UI change must be verified in a real browser, not just unit tests
 - **Security/penetration testing** - Use `ffuf-web-fuzzing` skill for web fuzzing and security testing
 - **Tech stack decisions** - Always pass through user for approval. Never assume.
 - **Test-driven development** - Use `tdd` skill. Write failing test first, then minimal code to pass, then refactor. No production code without a failing test
+- **CLI smoke testing** - When changing CLI commands, run the actual CLI end-to-end (not just unit tests) to verify real output and error handling. **Safety gate**: before any CLI smoke test that touches the broker, run `cli config` and confirm `Paper: True`. Never run CLI smoke tests against a live trading account
 - **Comprehensive testing** - Unit tests, integration tests, e2e tests. All tests pass before merge
 
 ### Python Style
@@ -97,6 +98,9 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - Integration tests: Broker API, data pipeline, WebSocket connections
 - E2E tests: Signal-to-execution flow, web UI workflows
 - Strategy logic testable with mock market data (no live API calls in unit tests)
+- **CLI smoke tests** - When changing CLI commands, always run the actual CLI to verify real output (not just unit tests). Confirm commands produce clean output on success and clean error messages on failure. Unit tests mock internals; smoke tests catch what mocks hide. **Safety gate**: before any smoke test that touches the broker, run `cli config` and confirm `Paper: True`. Never smoke-test against a live trading account.
+- **Browser tests** - When implementing or changing web UI, run browser tests using Claude in Chrome MCP tools or Playwright to validate changes render and behave correctly in a real browser. Don't rely solely on unit/component tests for UI work.
+- **Frontend design fidelity** - When implementing or changing web UI, use the `frontend-design` skill to visually verify the rendered result matches design intent. Check spacing, alignment, colors, and interactive states in the browser.
 
 ### Git
 - **Conventional Commits** ([spec](https://www.conventionalcommits.org/en/v1.0.0/)): `<type>(<scope>): <description>`

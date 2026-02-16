@@ -1014,18 +1014,18 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - `backend/tests/integration/test_backtest_data_loader.py` (new, marked @integration)
 
 **Tasks:**
-- [ ] Implement `BacktestDataLoader` accepting `BrokerConfig` (not raw API keys)
-- [ ] Use `StockHistoricalDataClient` with `limit=None` (SDK auto-paginates, no manual loop)
-- [ ] `adjustment=Adjustment.ALL` (split + dividend adjusted) — REQUIRED for correct backtesting
-- [ ] `feed=DataFeed.IEX` (from config)
-- [ ] Pass timezone-aware datetimes to SDK (not naive — naive assumed UTC)
-- [ ] Convert alpaca-py Bar → our `broker.types.Bar` (Decimal prices)
-- [ ] Concurrent per-symbol fetching via `asyncio.gather()` + `run_in_executor()`
-- [ ] Multi-symbol merge into single list sorted by `(timestamp, symbol)`
-- [ ] Market hours filtering (9:30-16:00 ET) via `zoneinfo` time comparison
-- [ ] Raise `BacktestError` if zero bars for any symbol
-- [ ] Unit tests with mocked client: conversion, sorting, filtering, zero-bars error
-- [ ] Unit test: mock using `SimpleNamespace(data={"AAPL": [...]})` for BarSet
+- [x] Implement `BacktestDataLoader` accepting `BrokerConfig` (not raw API keys)
+- [x] Use `StockHistoricalDataClient` with `limit=None` (SDK auto-paginates, no manual loop)
+- [x] `adjustment=Adjustment.ALL` (split + dividend adjusted) — REQUIRED for correct backtesting
+- [x] `feed=DataFeed.IEX` (from config)
+- [x] Pass timezone-aware datetimes to SDK (not naive — naive assumed UTC)
+- [x] Convert alpaca-py Bar → our `broker.types.Bar` (Decimal prices)
+- [x] Concurrent per-symbol fetching via `asyncio.gather()` + `run_in_executor()`
+- [x] Multi-symbol merge into single list sorted by `(timestamp, symbol)`
+- [x] Market hours filtering (9:30-16:00 ET) via `zoneinfo` time comparison
+- [x] Raise `BacktestError` if zero bars for any symbol
+- [x] Unit tests with mocked client: conversion, sorting, filtering, zero-bars error
+- [x] Unit test: mock using `SimpleNamespace(data={"AAPL": [...]})` for BarSet
 - [ ] Integration test (marked @integration): fetch 1 week AAPL from Alpaca, verify non-empty and sorted
 
 **Acceptance:**
@@ -1042,32 +1042,32 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - `backend/tests/integration/test_backtest_full_run.py` (new)
 
 **Tasks:**
-- [ ] Implement `BacktestRunner.run()` orchestration loop with injectable bars for testing
-- [ ] Wire all components with CORRECT constructor signatures (see Enhancement Summary P1 fixes)
-- [ ] `VelezStrategy(symbol=symbol, config=VelezConfig())` — correct instantiation
-- [ ] `PositionSizer(max_risk_per_trade_pct=..., max_position_pct=...)` — from risk config
-- [ ] `CircuitBreaker(max_daily_loss_pct=..., consecutive_loss_pause=...)` — two primitives
-- [ ] `sizer.calculate(equity, buying_power, entry_price, stop_loss_price)` → `SizingResult.qty`
-- [ ] `max_open_positions` enforcement before signal processing
-- [ ] EOD force-close using `last_bar_by_symbol[symbol].close - slippage` as price
-- [ ] EOD: flush all CandleAggregators, cancel all pending orders
-- [ ] Daily CircuitBreaker reset at each new trading date
-- [ ] Trailing stop updates + exit signal handling
-- [ ] Buy-stop expiry: candle counter + `should_cancel_pending()`
-- [ ] Track `last_bar_by_symbol: dict[str, Bar]` for EOD close price
-- [ ] Equity curve: per-candle in memory, EOD in DB
-- [ ] Store results in DB, including params JSON (verify no credentials stored)
-- [ ] Progress logging: day count at transitions, total elapsed + bars/sec at end
-- [ ] Error handling: try/except around strategy evaluation (log and skip, don't crash)
+- [x] Implement `BacktestRunner.run()` orchestration loop with injectable bars for testing
+- [x] Wire all components with CORRECT constructor signatures (see Enhancement Summary P1 fixes)
+- [x] `VelezStrategy(symbol=symbol, config=VelezConfig())` — correct instantiation
+- [x] `PositionSizer(max_risk_per_trade_pct=..., max_position_pct=...)` — from risk config
+- [x] `CircuitBreaker(max_daily_loss_pct=..., consecutive_loss_pause=...)` — two primitives
+- [x] `sizer.calculate(equity, buying_power, entry_price, stop_loss_price)` → `SizingResult.qty`
+- [x] `max_open_positions` enforcement before signal processing
+- [x] EOD force-close using `last_bar_by_symbol[symbol].close - slippage` as price
+- [x] EOD: flush all CandleAggregators, cancel all pending orders
+- [x] Daily CircuitBreaker reset at each new trading date
+- [x] Trailing stop updates + exit signal handling
+- [x] Buy-stop expiry: candle counter + `should_cancel_pending()`
+- [x] Track `last_bar_by_symbol: dict[str, Bar]` for EOD close price
+- [x] Equity curve: per-candle in memory, EOD in DB
+- [x] Store results in DB, including params JSON (verify no credentials stored)
+- [x] Progress logging: day count at transitions, total elapsed + bars/sec at end
+- [x] Error handling: try/except around strategy evaluation (log and skip, don't crash)
 - [ ] Unit test: known-trade verification (handcraft 5-10 bars, manually calculate every fill)
-- [ ] Unit test: warm-up period (no signals until `bar_count >= required_history`)
+- [x] Unit test: warm-up period (no signals until `bar_count >= required_history`)
 - [ ] Unit test: CircuitBreaker trips mid-backtest
 - [ ] Unit test: max_open_positions blocks new entries
-- [ ] Unit test: EOD force-close with correct price from last_bar_by_symbol
-- [ ] Unit test: pending orders canceled at EOD
-- [ ] Unit test: zero-trade backtest stores run with zero metrics
-- [ ] Unit test: multi-symbol capital contention
-- [ ] Unit test: params JSON does NOT contain API keys
+- [x] Unit test: EOD force-close with correct price from last_bar_by_symbol
+- [x] Unit test: pending orders canceled at EOD
+- [x] Unit test: zero-trade backtest stores run with zero metrics
+- [x] Unit test: multi-symbol capital contention
+- [x] Unit test: params JSON does NOT contain API keys
 - [ ] Property test (hypothesis): final equity = initial_capital + sum(all trade P&L) — money conservation
 - [ ] Integration test: full run with known dataset, trades match manual calculation
 
@@ -1084,12 +1084,12 @@ Full reproduction info — serialize `BacktestConfig.model_dump()` plus VelezCon
 - `backend/tests/unit/test_cli_backtest.py` (new)
 
 **Tasks:**
-- [ ] Add `backtest` CLI command with `--strategy`, `--symbols`, `--start`, `--end`, `--capital`, `--slippage`
-- [ ] `--capital` and `--slippage` as `type=str` → `Decimal()` directly (no float intermediary)
-- [ ] Run backtest via `asyncio.run()`
-- [ ] Format and print results table
-- [ ] Handle errors: invalid config → user-friendly message, no data → clear error
-- [ ] Unit test: CLI argument parsing (valid and invalid inputs)
+- [x] Add `backtest` CLI command with `--strategy`, `--symbols`, `--start`, `--end`, `--capital`, `--slippage`
+- [x] `--capital` and `--slippage` as `type=str` → `Decimal()` directly (no float intermediary)
+- [x] Run backtest via `asyncio.run()`
+- [x] Format and print results table
+- [x] Handle errors: invalid config → user-friendly message, no data → clear error
+- [x] Unit test: CLI argument parsing (valid and invalid inputs)
 - [ ] Unit test: output formatting (zero trades, normal trades)
 
 **Acceptance:**
@@ -1177,58 +1177,58 @@ Could compute all signals at once using pandas vectorized operations (much faste
 
 ### Functional Requirements
 
-- [ ] Backtest loads 1-min bars from Alpaca with `Adjustment.ALL` (split/dividend adjusted)
-- [ ] Bars are merged chronologically across all symbols
-- [ ] CandleAggregator produces correct multi-minute candles (1m/2m/5m/10m)
-- [ ] CandleAggregator.flush() called at EOD (no lost partial candles)
-- [ ] Indicator warm-up respected: no signals until `bar_count >= required_history`
-- [ ] VelezStrategy instantiated with `(symbol, VelezConfig())` — correct constructor
-- [ ] VelezStrategy detects signals identically to live (same IndicatorSet, same logic)
-- [ ] Buy-stop entry fills correctly: trigger on high >= stop_price, fill at max(open, stop_price) + slippage, clamped to bar.high
-- [ ] Stop-loss exit fills correctly: trigger on low <= stop_price, fill at min(open, stop_price) - slippage, clamped to bar.low
-- [ ] Market orders fill at next bar open ± slippage, clamped to bar range
-- [ ] Fill prices never negative (minimum $0.01 floor)
-- [ ] Gap fills handled: price gaps past order trigger → fill at open (worse price, clamped)
-- [ ] Position sizing uses correct `PositionSizer.calculate(equity, buying_power, entry_price, stop_loss_price)` signature
-- [ ] `max_open_positions` enforced (default 5) — matches live risk controls
-- [ ] CircuitBreaker constructed with two primitives (not RiskConfig object)
-- [ ] CircuitBreaker resets daily and tracks consecutive losses during backtest
-- [ ] Trailing stop updates work through Velez 3-state machine
-- [ ] Buy-stop canceled after 1 candle if not filled (`should_cancel_pending`)
-- [ ] EOD force-close: all open positions closed at `last_bar.close - slippage` each trading day
-- [ ] EOD: ALL pending orders canceled (entries AND stops)
-- [ ] Remaining positions force-closed at final bar of backtest
-- [ ] Equity curve: per-candle in memory (max drawdown), end-of-day in DB (Sharpe)
-- [ ] Total return, win rate (float), profit factor (float, capped at 9999.99), Sharpe ratio (float, sample std), max drawdown (float) computed correctly
-- [ ] Sharpe ratio: annualized from daily returns with sample std (ddof=1), risk-free rate = 0
-- [ ] Max drawdown: computed from per-candle equity curve using high-water-mark
-- [ ] Results stored in `backtest_run` and `backtest_trade` tables
-- [ ] `params` JSON stores full config for reproduction — MUST NOT contain API keys
-- [ ] Unknown strategy name produces clear error in config validation (fail fast)
-- [ ] Multi-symbol: bars interleaved by `(timestamp, symbol)`, buying power consumed sequentially
-- [ ] Position objects updated each bar (unrealized P&L, market value)
-- [ ] Same-bar stop+exit: stop triggers first, `should_exit()` not called
-- [ ] Zero-trade backtest: stores run with zero metrics, prints "no trades" summary
-- [ ] CLI `algo-trader backtest` command works with all options
-- [ ] CLI `--capital` and `--slippage` accept string, convert to Decimal directly
+- [x] Backtest loads 1-min bars from Alpaca with `Adjustment.ALL` (split/dividend adjusted)
+- [x] Bars are merged chronologically across all symbols
+- [x] CandleAggregator produces correct multi-minute candles (1m/2m/5m/10m)
+- [x] CandleAggregator.flush() called at EOD (no lost partial candles)
+- [x] Indicator warm-up respected: no signals until `bar_count >= required_history`
+- [x] VelezStrategy instantiated with `(symbol, VelezConfig())` — correct constructor
+- [x] VelezStrategy detects signals identically to live (same IndicatorSet, same logic)
+- [x] Buy-stop entry fills correctly: trigger on high >= stop_price, fill at max(open, stop_price) + slippage, clamped to bar.high
+- [x] Stop-loss exit fills correctly: trigger on low <= stop_price, fill at min(open, stop_price) - slippage, clamped to bar.low
+- [x] Market orders fill at next bar open ± slippage, clamped to bar range
+- [x] Fill prices never negative (minimum $0.01 floor)
+- [x] Gap fills handled: price gaps past order trigger → fill at open (worse price, clamped)
+- [x] Position sizing uses correct `PositionSizer.calculate(equity, buying_power, entry_price, stop_loss_price)` signature
+- [x] `max_open_positions` enforced (default 5) — matches live risk controls
+- [x] CircuitBreaker constructed with two primitives (not RiskConfig object)
+- [x] CircuitBreaker resets daily and tracks consecutive losses during backtest
+- [x] Trailing stop updates work through Velez 3-state machine
+- [x] Buy-stop canceled after 1 candle if not filled (`should_cancel_pending`)
+- [x] EOD force-close: all open positions closed at `last_bar.close - slippage` each trading day
+- [x] EOD: ALL pending orders canceled (entries AND stops)
+- [x] Remaining positions force-closed at final bar of backtest
+- [x] Equity curve: per-candle in memory (max drawdown), end-of-day in DB (Sharpe)
+- [x] Total return, win rate (float), profit factor (float, capped at 9999.99), Sharpe ratio (float, sample std), max drawdown (float) computed correctly
+- [x] Sharpe ratio: annualized from daily returns with sample std (ddof=1), risk-free rate = 0
+- [x] Max drawdown: computed from per-candle equity curve using high-water-mark
+- [x] Results stored in `backtest_run` and `backtest_trade` tables
+- [x] `params` JSON stores full config for reproduction — MUST NOT contain API keys
+- [x] Unknown strategy name produces clear error in config validation (fail fast)
+- [x] Multi-symbol: bars interleaved by `(timestamp, symbol)`, buying power consumed sequentially
+- [x] Position objects updated each bar (unrealized P&L, market value)
+- [x] Same-bar stop+exit: stop triggers first, `should_exit()` not called
+- [x] Zero-trade backtest: stores run with zero metrics, prints "no trades" summary
+- [x] CLI `algo-trader backtest` command works with all options
+- [x] CLI `--capital` and `--slippage` accept string, convert to Decimal directly
 
 ### Non-Functional Requirements
 
-- [ ] 1-year single-symbol backtest completes in < 60 seconds
+- [x] 1-year single-symbol backtest completes in < 60 seconds
 - [ ] Memory usage acceptable for 1-year 5-symbol backtest (~370MB, document in CLI help)
-- [ ] All monetary calculations use Decimal (no float for prices, P&L, position sizing)
-- [ ] Ratios (Sharpe, win_rate, drawdown, profit_factor) use float (project convention)
-- [ ] mypy strict passes on all new code
-- [ ] ruff check + format passes on all new code
+- [x] All monetary calculations use Decimal (no float for prices, P&L, position sizing)
+- [x] Ratios (Sharpe, win_rate, drawdown, profit_factor) use float (project convention)
+- [x] mypy strict passes on all new code
+- [x] ruff check + format passes on all new code
 
 ### Quality Gates
 
-- [ ] All unit tests pass (config, metrics, executor, runner)
+- [x] All unit tests pass (config, metrics, executor, runner)
 - [ ] Known-trade verification test: handcrafted bars, manually verified fills and P&L
 - [ ] Money conservation property test: final equity = initial + sum(trade P&L)
 - [ ] Integration test: full backtest run with known dataset
 - [ ] Integration test: BacktestDataLoader fetches real Alpaca data with Adjustment.ALL
-- [ ] Params JSON credential exclusion test
+- [x] Params JSON credential exclusion test
 
 ---
 
