@@ -551,41 +551,41 @@ def make_order_status(
 
 ### Functional
 
-- [ ] Reconciliation detects stale SUBMITTED order that broker shows as FILLED → updates local state and records fill details
-- [ ] Reconciliation detects stale SUBMITTED order that broker shows as CANCELED → updates local state
-- [ ] PENDING_SUBMIT orders with no `broker_id` are marked SUBMIT_FAILED on startup
-- [ ] Orphan positions (broker has position, no local record) create synthetic local records with deterministic IDs
-- [ ] Orphan broker orders (open orders at broker with no local record) are canceled
-- [ ] Every position without an active stop-loss gets an emergency stop placed (CRITICAL log)
-- [ ] Protected positions (with active stops) are NOT double-protected (idempotent)
-- [ ] Emergency stop uses `broker_position.qty` (not local qty_filled)
-- [ ] Emergency stop price = `(avg_entry_price * (1 - emergency_stop_pct)).quantize(Decimal("0.01"))` using Decimal math
-- [ ] NULL or zero `avg_entry_price` → CRITICAL log, skip stop placement (don't place zero-price stop)
-- [ ] Orders older than 24h are resolved via individual `get_order_status()` fallback
-- [ ] CircuitBreaker state is reconstructed from today's trades AFTER reconciliation
-- [ ] Reconciliation completes before any WebSocket subscription
-- [ ] Every reconciliation action is logged as an `OrderEventModel` with appropriate event type
-- [ ] `ReconciliationResult` contains accurate counts of all actions taken
-- [ ] Broker fetches are parallelized via `asyncio.gather`
-- [ ] `force_state()` is gated — raises RuntimeError if `_reconciliation=True` not passed
+- [x] Reconciliation detects stale SUBMITTED order that broker shows as FILLED → updates local state and records fill details
+- [x] Reconciliation detects stale SUBMITTED order that broker shows as CANCELED → updates local state
+- [x] PENDING_SUBMIT orders with no `broker_id` are marked SUBMIT_FAILED on startup
+- [x] Orphan positions (broker has position, no local record) create synthetic local records with deterministic IDs
+- [x] Orphan broker orders (open orders at broker with no local record) are canceled
+- [x] Every position without an active stop-loss gets an emergency stop placed (CRITICAL log)
+- [x] Protected positions (with active stops) are NOT double-protected (idempotent)
+- [x] Emergency stop uses `broker_position.qty` (not local qty_filled)
+- [x] Emergency stop price = `(avg_entry_price * (1 - emergency_stop_pct)).quantize(Decimal("0.01"))` using Decimal math
+- [x] NULL or zero `avg_entry_price` → CRITICAL log, skip stop placement (don't place zero-price stop)
+- [x] Orders older than 24h are resolved via individual `get_order_status()` fallback
+- [x] CircuitBreaker state is reconstructed from today's trades AFTER reconciliation
+- [x] Reconciliation completes before any WebSocket subscription
+- [x] Every reconciliation action is logged as an `OrderEventModel` with appropriate event type
+- [x] `ReconciliationResult` contains accurate counts of all actions taken
+- [x] Broker fetches are parallelized via `asyncio.gather`
+- [x] `force_state()` is gated — raises RuntimeError if `_reconciliation=True` not passed
 
 ### Non-Functional
 
-- [ ] Reconciliation completes within 3 seconds for typical case (5 symbols, 5 positions) — parallel fetches
-- [ ] Broker API read failure (3× retry exhausted) raises `ReconciliationFatalError`
-- [ ] Emergency stop write failure uses 3× retry + market sell fallback
-- [ ] Running reconciliation twice produces identical end state (idempotent)
-- [ ] All monetary calculations use Decimal (no float)
-- [ ] Broker response values validated (qty > 0, price > 0, reasonable bounds)
-- [ ] mypy strict clean, ruff clean
+- [x] Reconciliation completes within 3 seconds for typical case (5 symbols, 5 positions) — parallel fetches
+- [x] Broker API read failure (3× retry exhausted) raises `ReconciliationFatalError`
+- [x] Emergency stop write failure uses 3× retry + market sell fallback
+- [x] Running reconciliation twice produces identical end state (idempotent)
+- [x] All monetary calculations use Decimal (no float)
+- [x] Broker response values validated (qty > 0, price > 0, reasonable bounds)
+- [x] mypy strict clean, ruff clean
 
 ### Quality Gates
 
-- [ ] All 14 unit tests pass
-- [ ] All 4 integration tests pass
-- [ ] `force_state()` unit tests pass (including security gate test)
-- [ ] FakeBrokerAdapter enhancement tests pass
-- [ ] No existing tests broken by changes
+- [x] All 19 unit tests pass (14 reconciler + 5 force_state)
+- [x] All 4 integration tests pass
+- [x] `force_state()` unit tests pass (including security gate test)
+- [x] FakeBrokerAdapter enhancement tests pass
+- [x] No existing tests broken by changes (485 total, 8 skipped)
 
 ## Risk Analysis
 
