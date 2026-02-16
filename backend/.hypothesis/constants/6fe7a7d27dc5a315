@@ -1,4 +1,0 @@
-# file: C:\Projects\github\algo-trader\backend\app\config.py
-# hypothesis_version: 6.151.6
-
-[0.5, 2.0, 5.0, 10.0, 30.0, 50.0, 80.0, 100, 200, 500, 5000, 8000, '.env', '0.001', '0.005', '0.01', '0.02', '0.03', '0.05', '0.1', '0.10', '0.25', '1.0', '10', '127.0.0.1', '500', '5000', 'AAPL', 'ALGO_', 'AMD', 'CRITICAL', 'DEBUG', 'ERROR', 'INFO', 'META', 'NVDA', 'TSLA', 'WARNING', '^[A-Z]{1,5}$', '__', 'alpaca', 'console', 'data/trading.db', 'iex', 'ignore', 'json', 'log_format', 'log_level', 'utf-8', 'watchlist']

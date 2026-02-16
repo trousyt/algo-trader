@@ -1,4 +1,0 @@
-# file: C:\Projects\github\algo-trader\backend\app\broker\alpaca\broker.py
-# hypothesis_version: 6.151.6
-
-[1.0, 5.0, 10.0, 401, 403, 'alpaca-trade-stream', 'status_code']

@@ -1,4 +1,0 @@
-# file: C:\Projects\github\algo-trader\backend\app\broker\types.py
-# hypothesis_version: 6.151.6
-
-['accepted', 'buy', 'canceled', 'day', 'expired', 'fill', 'filled', 'gtc', 'ioc', 'limit', 'market', 'new', 'partial_fill', 'partially_filled', 'pending_cancel', 'rejected', 'replaced', 'sell', 'stop', 'stop_limit', 'trailing_stop']

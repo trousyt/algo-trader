@@ -1,4 +1,0 @@
-# file: C:\Projects\github\algo-trader\backend\app\cli\commands.py
-# hypothesis_version: 6.151.6
-
-[5.0, '--end-date', '--start-date', '--strategy', '--symbols', 'Not yet implemented.', '[Broker]', '[Risk]']
