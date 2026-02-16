@@ -2,6 +2,7 @@
 
 __all__ = [
     "BacktestConfig",
+    "BacktestDataLoader",
     "BacktestError",
     "BacktestExecution",
     "BacktestMetrics",
@@ -11,5 +12,6 @@ __all__ = [
 ]
 
 from app.backtest.config import BacktestConfig, BacktestError, BacktestTradeData
+from app.backtest.data_loader import BacktestDataLoader
 from app.backtest.executor import BacktestExecution, Fill
 from app.backtest.metrics import BacktestMetrics, BacktestMetricsData
