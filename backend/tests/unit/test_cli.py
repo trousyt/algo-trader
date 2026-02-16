@@ -98,6 +98,30 @@ class TestBacktestCommand:
         )
         assert result.exit_code != 0
 
+    def test_backtest_network_error_shows_clean_message(
+        self, runner: CliRunner
+    ) -> None:
+        """Network/SSL errors display as click errors, not raw tracebacks."""
+        with patch(
+            "app.cli.commands._run_backtest",
+            side_effect=ConnectionError("SSL: CERTIFICATE_VERIFY_FAILED"),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "backtest",
+                    "--symbols",
+                    "AAPL",
+                    "--start-date",
+                    "2026-01-01",
+                    "--end-date",
+                    "2026-02-01",
+                ],
+            )
+            assert result.exit_code != 0
+            assert "Backtest failed:" in result.output
+            assert "SSL" in result.output
+
 
 class TestConfigCommand:
     """Test the config command."""

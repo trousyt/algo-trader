@@ -106,6 +106,8 @@ def backtest(
         result = asyncio.run(_run_backtest(bt_config))
     except BacktestError as e:
         raise click.ClickException(str(e)) from e
+    except Exception as e:
+        raise click.ClickException(f"Backtest failed: {e}") from e
 
     _print_backtest_results(result, bt_config)
 
