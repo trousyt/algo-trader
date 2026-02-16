@@ -9,7 +9,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from app.broker.types import AccountInfo, Bar, OrderType, Side
+from app.broker.types import (
+    AccountInfo,
+    Bar,
+    BrokerOrderStatus,
+    OrderStatus,
+    OrderType,
+    Position,
+    Side,
+)
 from app.orders.types import Signal
 
 # Default timestamp: a regular trading day at 10:00 AM ET (14:00 UTC)
@@ -103,6 +111,54 @@ def make_account_info(
         portfolio_value=portfolio_value,
         day_trade_count=day_trade_count,
         pattern_day_trader=pattern_day_trader,
+    )
+
+
+def make_position(
+    *,
+    symbol: str = "AAPL",
+    qty: Decimal = Decimal("100"),
+    side: Side = Side.BUY,
+    avg_entry_price: Decimal = Decimal("150.00"),
+    market_value: Decimal = Decimal("15000.00"),
+    unrealized_pl: Decimal = Decimal("0"),
+    unrealized_pl_pct: Decimal = Decimal("0"),
+) -> Position:
+    """Create a Position with sensible defaults."""
+    return Position(
+        symbol=symbol,
+        qty=qty,
+        side=side,
+        avg_entry_price=avg_entry_price,
+        market_value=market_value,
+        unrealized_pl=unrealized_pl,
+        unrealized_pl_pct=unrealized_pl_pct,
+    )
+
+
+def make_order_status(
+    *,
+    broker_order_id: str = "broker-001",
+    symbol: str = "AAPL",
+    side: Side = Side.BUY,
+    qty: Decimal = Decimal("100"),
+    order_type: OrderType = OrderType.STOP,
+    status: BrokerOrderStatus = BrokerOrderStatus.ACCEPTED,
+    filled_qty: Decimal = Decimal("0"),
+    filled_avg_price: Decimal | None = None,
+    submitted_at: datetime = _DEFAULT_TIMESTAMP,
+) -> OrderStatus:
+    """Create an OrderStatus with sensible defaults."""
+    return OrderStatus(
+        broker_order_id=broker_order_id,
+        symbol=symbol,
+        side=side,
+        qty=qty,
+        order_type=order_type,
+        status=status,
+        filled_qty=filled_qty,
+        filled_avg_price=filled_avg_price,
+        submitted_at=submitted_at,
     )
 
 

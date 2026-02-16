@@ -87,3 +87,20 @@ class OrderStateMachine:
             raise InvalidTransitionError(self._state, to)
 
         self._state = to
+
+    def force_state(self, new_state: OrderState, *, _reconciliation: bool = False) -> None:
+        """Force-set state without transition validation.
+
+        Used ONLY during startup reconciliation to correct local state
+        that diverged from broker while the system was down.
+
+        Args:
+            new_state: The target state to force.
+            _reconciliation: Must be True. Guards against accidental misuse.
+
+        Raises:
+            RuntimeError: If _reconciliation is not True.
+        """
+        if not _reconciliation:
+            raise RuntimeError("force_state() can only be called during reconciliation")
+        self._state = new_state

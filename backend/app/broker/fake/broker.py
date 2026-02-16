@@ -37,6 +37,9 @@ class FakeBrokerAdapter:
         self,
         positions: list[Position] | None = None,
         account: AccountInfo | None = None,
+        open_orders: list[OrderStatus] | None = None,
+        recent_orders: list[OrderStatus] | None = None,
+        order_statuses: dict[str, OrderStatus] | None = None,
     ) -> None:
         self._positions: list[Position] = positions if positions is not None else []
         self._account: AccountInfo = account or AccountInfo(
@@ -47,9 +50,13 @@ class FakeBrokerAdapter:
             day_trade_count=0,
             pattern_day_trader=False,
         )
+        self._open_orders: list[OrderStatus] = open_orders or []
+        self._recent_orders: list[OrderStatus] = recent_orders or []
+        self._order_statuses: dict[str, OrderStatus] = order_statuses or {}
         self._trade_queue: asyncio.Queue[TradeUpdate] = asyncio.Queue()
         self._connected = False
         self.submitted_orders: list[OrderRequest | BracketOrderRequest] = []
+        self.canceled_order_ids: list[str] = []
 
     def push_trade_update(self, update: TradeUpdate) -> None:
         """Push a trade update into the streaming queue."""
@@ -93,7 +100,7 @@ class FakeBrokerAdapter:
         )
 
     async def cancel_order(self, broker_order_id: str) -> None:
-        pass
+        self.canceled_order_ids.append(broker_order_id)
 
     async def replace_order(
         self,
@@ -115,6 +122,8 @@ class FakeBrokerAdapter:
         )
 
     async def get_order_status(self, broker_order_id: str) -> OrderStatus:
+        if broker_order_id in self._order_statuses:
+            return self._order_statuses[broker_order_id]
         return OrderStatus(
             broker_order_id=broker_order_id,
             symbol="UNKNOWN",
@@ -134,13 +143,13 @@ class FakeBrokerAdapter:
         return self._account
 
     async def get_open_orders(self) -> list[OrderStatus]:
-        return []
+        return list(self._open_orders)
 
     async def get_recent_orders(
         self,
         since_hours: int = 24,
     ) -> list[OrderStatus]:
-        return []
+        return list(self._recent_orders)
 
     async def subscribe_trade_updates(self) -> AsyncIterator[TradeUpdate]:
         return self._trade_iterator()
