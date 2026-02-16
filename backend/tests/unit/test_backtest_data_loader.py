@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -50,7 +50,9 @@ def _make_alpaca_bar(
 def _make_response(data: dict[str, list[SimpleNamespace]]) -> SimpleNamespace:
     """Create a mock response with .data.get() interface."""
     mock_data = MagicMock()
-    mock_data.get = MagicMock(side_effect=lambda sym, default=None: data.get(sym, default or []))
+    mock_data.get = MagicMock(
+        side_effect=lambda sym, default=None: data.get(sym, default or [])
+    )
     return SimpleNamespace(data=mock_data)
 
 
@@ -59,7 +61,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_converts_alpaca_bars_to_domain_bars(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         ts = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)  # 10:00 ET
         alpaca_bar = _make_alpaca_bar(
@@ -89,19 +92,22 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_filters_pre_market_bars(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Bars before 9:30 ET should be filtered out."""
         pre_market = datetime(2026, 2, 10, 14, 0, tzinfo=_UTC)  # 9:00 ET
         market_hours = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)  # 10:00 ET
 
         mock_client = MagicMock()
-        mock_client.get_stock_bars.return_value = _make_response({
-            "AAPL": [
-                _make_alpaca_bar(timestamp=pre_market),
-                _make_alpaca_bar(timestamp=market_hours),
-            ],
-        })
+        mock_client.get_stock_bars.return_value = _make_response(
+            {
+                "AAPL": [
+                    _make_alpaca_bar(timestamp=pre_market),
+                    _make_alpaca_bar(timestamp=market_hours),
+                ],
+            }
+        )
         mock_client_cls.return_value = mock_client
 
         loader = BacktestDataLoader(_make_broker_config())
@@ -112,7 +118,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_filters_after_hours_bars(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Bars at or after 16:00 ET should be filtered out."""
         at_close = datetime(2026, 2, 10, 21, 0, tzinfo=_UTC)  # 16:00 ET
@@ -120,13 +127,15 @@ class TestFetchSymbol:
         market_hours = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)  # 10:00 ET
 
         mock_client = MagicMock()
-        mock_client.get_stock_bars.return_value = _make_response({
-            "AAPL": [
-                _make_alpaca_bar(timestamp=market_hours),
-                _make_alpaca_bar(timestamp=at_close),
-                _make_alpaca_bar(timestamp=after_hours),
-            ],
-        })
+        mock_client.get_stock_bars.return_value = _make_response(
+            {
+                "AAPL": [
+                    _make_alpaca_bar(timestamp=market_hours),
+                    _make_alpaca_bar(timestamp=at_close),
+                    _make_alpaca_bar(timestamp=after_hours),
+                ],
+            }
+        )
         mock_client_cls.return_value = mock_client
 
         loader = BacktestDataLoader(_make_broker_config())
@@ -137,15 +146,18 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_bar_at_930_included(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Bar exactly at 9:30 ET should be included."""
         at_open = datetime(2026, 2, 10, 14, 30, tzinfo=_UTC)  # 9:30 ET
 
         mock_client = MagicMock()
-        mock_client.get_stock_bars.return_value = _make_response({
-            "AAPL": [_make_alpaca_bar(timestamp=at_open)],
-        })
+        mock_client.get_stock_bars.return_value = _make_response(
+            {
+                "AAPL": [_make_alpaca_bar(timestamp=at_open)],
+            }
+        )
         mock_client_cls.return_value = mock_client
 
         loader = BacktestDataLoader(_make_broker_config())
@@ -155,15 +167,18 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_bar_at_1559_included(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Bar at 15:59 ET should be included (last valid minute)."""
         last_minute = datetime(2026, 2, 10, 20, 59, tzinfo=_UTC)  # 15:59 ET
 
         mock_client = MagicMock()
-        mock_client.get_stock_bars.return_value = _make_response({
-            "AAPL": [_make_alpaca_bar(timestamp=last_minute)],
-        })
+        mock_client.get_stock_bars.return_value = _make_response(
+            {
+                "AAPL": [_make_alpaca_bar(timestamp=last_minute)],
+            }
+        )
         mock_client_cls.return_value = mock_client
 
         loader = BacktestDataLoader(_make_broker_config())
@@ -173,7 +188,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_empty_response_returns_empty_list(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         mock_client = MagicMock()
         mock_client.get_stock_bars.return_value = _make_response({"AAPL": []})
@@ -186,7 +202,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_missing_symbol_returns_empty_list(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Symbol not in response.data should return empty list."""
         mock_client = MagicMock()
@@ -200,7 +217,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_decimal_conversion_precision(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Float to Decimal via str should preserve precision."""
         ts = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)
@@ -223,7 +241,8 @@ class TestFetchSymbol:
 
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     def test_request_uses_correct_params(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Verify StockBarsRequest is constructed with correct parameters."""
         mock_client = MagicMock()
@@ -250,18 +269,21 @@ class TestLoadBars:
     @pytest.mark.asyncio
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     async def test_single_symbol_returns_bars(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         ts1 = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)
         ts2 = datetime(2026, 2, 10, 15, 1, tzinfo=_UTC)
 
         mock_client = MagicMock()
-        mock_client.get_stock_bars.return_value = _make_response({
-            "AAPL": [
-                _make_alpaca_bar(timestamp=ts1),
-                _make_alpaca_bar(timestamp=ts2),
-            ],
-        })
+        mock_client.get_stock_bars.return_value = _make_response(
+            {
+                "AAPL": [
+                    _make_alpaca_bar(timestamp=ts1),
+                    _make_alpaca_bar(timestamp=ts2),
+                ],
+            }
+        )
         mock_client_cls.return_value = mock_client
 
         loader = BacktestDataLoader(_make_broker_config())
@@ -273,7 +295,8 @@ class TestLoadBars:
     @pytest.mark.asyncio
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     async def test_multi_symbol_merged_and_sorted(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Multiple symbols should be merged and sorted by (timestamp, symbol)."""
         ts1 = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)
@@ -281,12 +304,14 @@ class TestLoadBars:
 
         def mock_get_bars(request: MagicMock) -> SimpleNamespace:
             symbol = request.symbol_or_symbols[0]
-            return _make_response({
-                symbol: [
-                    _make_alpaca_bar(timestamp=ts1),
-                    _make_alpaca_bar(timestamp=ts2),
-                ],
-            })
+            return _make_response(
+                {
+                    symbol: [
+                        _make_alpaca_bar(timestamp=ts1),
+                        _make_alpaca_bar(timestamp=ts2),
+                    ],
+                }
+            )
 
         mock_client = MagicMock()
         mock_client.get_stock_bars.side_effect = mock_get_bars
@@ -313,7 +338,8 @@ class TestLoadBars:
     @pytest.mark.asyncio
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     async def test_zero_bars_raises_backtest_error(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         mock_client = MagicMock()
         mock_client.get_stock_bars.return_value = _make_response({"AAPL": []})
@@ -327,7 +353,8 @@ class TestLoadBars:
     @pytest.mark.asyncio
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     async def test_one_symbol_empty_in_multi_raises(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """If one of multiple symbols returns zero bars, raise BacktestError."""
         ts = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)
@@ -354,16 +381,19 @@ class TestLoadBars:
     @pytest.mark.asyncio
     @patch("app.backtest.data_loader.StockHistoricalDataClient")
     async def test_concurrent_fetching(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         """Verify multiple symbols result in multiple SDK calls."""
         ts = datetime(2026, 2, 10, 15, 0, tzinfo=_UTC)
 
         def mock_get_bars(request: MagicMock) -> SimpleNamespace:
             symbol = request.symbol_or_symbols[0]
-            return _make_response({
-                symbol: [_make_alpaca_bar(timestamp=ts)],
-            })
+            return _make_response(
+                {
+                    symbol: [_make_alpaca_bar(timestamp=ts)],
+                }
+            )
 
         mock_client = MagicMock()
         mock_client.get_stock_bars.side_effect = mock_get_bars

@@ -68,11 +68,10 @@ class BacktestDataLoader:
 
         # Merge all symbols into one list, sorted by (timestamp, symbol)
         all_bars: list[Bar] = []
-        for symbol, bars in zip(symbols, results):
+        for symbol, bars in zip(symbols, results, strict=True):
             if not bars:
                 raise BacktestError(
-                    f"No bars returned for {symbol} "
-                    f"between {start_date} and {end_date}"
+                    f"No bars returned for {symbol} between {start_date} and {end_date}"
                 )
             log.info(
                 "backtest_data_loaded",
@@ -113,7 +112,7 @@ class BacktestDataLoader:
         )
 
         response = self._client.get_stock_bars(request)
-        alpaca_bars = response.data.get(symbol, [])
+        alpaca_bars = response.data.get(symbol, [])  # type: ignore[union-attr]
 
         # Convert to domain Bar objects, filter market hours
         bars: list[Bar] = []

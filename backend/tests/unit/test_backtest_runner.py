@@ -12,7 +12,7 @@ from app.backtest.config import BacktestConfig
 from app.backtest.runner import BacktestResult, BacktestRunner, _resolve_strategy
 from app.broker.types import Bar
 from app.config import AppConfig, RiskConfig, VelezConfig
-from app.models.backtest import BacktestRunModel, BacktestTradeModel
+from app.models.backtest import BacktestRunModel
 from app.models.base import Base
 from app.strategy.velez import VelezStrategy
 
@@ -85,15 +85,17 @@ def _make_market_bars(
     for i in range(count):
         ts = base_ts + timedelta(minutes=i)
         p = base_price + Decimal(str(i * 0.10))
-        bars.append(_bar(
-            symbol=symbol,
-            ts=ts,
-            open_=p,
-            high=p + Decimal("1.00"),
-            low=p - Decimal("0.50"),
-            close=p + Decimal("0.50"),
-            volume=1000,
-        ))
+        bars.append(
+            _bar(
+                symbol=symbol,
+                ts=ts,
+                open_=p,
+                high=p + Decimal("1.00"),
+                low=p - Decimal("0.50"),
+                close=p + Decimal("0.50"),
+                volume=1000,
+            )
+        )
     return bars
 
 
@@ -118,6 +120,7 @@ class TestResolveStrategy:
 
     def test_unknown_strategy_raises(self) -> None:
         from app.backtest.config import BacktestError
+
         with pytest.raises(BacktestError, match="Unknown strategy"):
             _resolve_strategy("unknown", "AAPL", VelezConfig())
 
@@ -229,7 +232,6 @@ class TestBacktestRunnerDB:
         result = await runner.run()
 
         async with db_session_factory() as session:
-            from sqlalchemy import select
             run = await session.get(BacktestRunModel, result.run_id)
             assert run is not None
             assert run.strategy == "velez"
@@ -378,7 +380,10 @@ class TestBacktestRunnerEODForceClose:
             bars=[],
         )
         runner._close_eod_positions(
-            execution, trades, last_bar_by_symbol, strategies,
+            execution,
+            trades,
+            last_bar_by_symbol,
+            strategies,
         )
 
         assert len(trades) == 1
@@ -400,6 +405,7 @@ class TestBacktestResult:
     def test_frozen_dataclass(self) -> None:
         """BacktestResult should be immutable."""
         from app.backtest.metrics import BacktestMetricsData
+
         metrics = BacktestMetricsData(
             total_return=Decimal("0"),
             total_return_pct=Decimal("0"),

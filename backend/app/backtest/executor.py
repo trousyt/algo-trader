@@ -113,9 +113,7 @@ class BacktestExecution:
     @property
     def equity(self) -> Decimal:
         """Cash + sum of position market values."""
-        return self._cash + sum(
-            p.market_value for p in self._positions.values()
-        )
+        return self._cash + sum(p.market_value for p in self._positions.values())
 
     @property
     def cash(self) -> Decimal:
@@ -139,15 +137,22 @@ class BacktestExecution:
 
         # Collect pending orders for this symbol
         symbol_orders = [
-            o for o in self._pending_orders.values()
-            if o.symbol == bar.symbol
+            o for o in self._pending_orders.values() if o.symbol == bar.symbol
         ]
         if not symbol_orders:
             return fills
 
         # Sort: stop-losses first, entries second, market third
-        stop_losses = [o for o in symbol_orders if o.side == Side.SELL and o.order_type == OrderType.STOP]
-        entries = [o for o in symbol_orders if o.side == Side.BUY and o.order_type == OrderType.STOP]
+        stop_losses = [
+            o
+            for o in symbol_orders
+            if o.side == Side.SELL and o.order_type == OrderType.STOP
+        ]
+        entries = [
+            o
+            for o in symbol_orders
+            if o.side == Side.BUY and o.order_type == OrderType.STOP
+        ]
         markets = [o for o in symbol_orders if o.order_type == OrderType.MARKET]
 
         for order in stop_losses:
@@ -209,7 +214,8 @@ class BacktestExecution:
     def cancel_pending_entry(self, symbol: str) -> None:
         """Cancel the pending buy-stop entry for a symbol."""
         to_remove = [
-            oid for oid, o in self._pending_orders.items()
+            oid
+            for oid, o in self._pending_orders.items()
             if o.symbol == symbol and o.side == Side.BUY and o.role == OrderRole.ENTRY
         ]
         for oid in to_remove:
@@ -235,7 +241,11 @@ class BacktestExecution:
     def update_stop(self, symbol: str, new_stop: Decimal) -> None:
         """Update the pending stop-loss order price for a symbol."""
         for o in self._pending_orders.values():
-            if o.symbol == symbol and o.side == Side.SELL and o.order_type == OrderType.STOP:
+            if (
+                o.symbol == symbol
+                and o.side == Side.SELL
+                and o.order_type == OrderType.STOP
+            ):
                 o.stop_price = new_stop
                 return
 
@@ -333,17 +343,19 @@ class BacktestExecution:
         del self._pending_orders[order.order_id]
 
         # Record filled order status
-        self._filled_orders.append(OrderStatus(
-            broker_order_id=order.order_id,
-            symbol=order.symbol,
-            side=order.side,
-            qty=order.qty,
-            order_type=order.order_type,
-            status=BrokerOrderStatus.FILLED,
-            filled_qty=order.qty,
-            filled_avg_price=fill_price,
-            submitted_at=timestamp,
-        ))
+        self._filled_orders.append(
+            OrderStatus(
+                broker_order_id=order.order_id,
+                symbol=order.symbol,
+                side=order.side,
+                qty=order.qty,
+                order_type=order.order_type,
+                status=BrokerOrderStatus.FILLED,
+                filled_qty=order.qty,
+                filled_avg_price=fill_price,
+                submitted_at=timestamp,
+            )
+        )
 
         return Fill(
             order_id=order.order_id,

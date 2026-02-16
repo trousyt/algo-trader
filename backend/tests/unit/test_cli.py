@@ -86,10 +86,14 @@ class TestBacktestCommand:
             cli,
             [
                 "backtest",
-                "--strategy", "nonexistent",
-                "--symbols", "AAPL",
-                "--start-date", "2026-01-01",
-                "--end-date", "2026-02-01",
+                "--strategy",
+                "nonexistent",
+                "--symbols",
+                "AAPL",
+                "--start-date",
+                "2026-01-01",
+                "--end-date",
+                "2026-02-01",
             ],
         )
         assert result.exit_code != 0

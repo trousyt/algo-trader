@@ -66,7 +66,8 @@ class BacktestConfig(BaseModel):
     def validate_interval(cls, v: int) -> int:
         if v not in VALID_CANDLE_INTERVALS:
             raise ValueError(
-                f"Invalid interval: {v}. Must be one of {sorted(VALID_CANDLE_INTERVALS)}"
+                f"Invalid interval: {v}. "
+                f"Must be one of {sorted(VALID_CANDLE_INTERVALS)}"
             )
         return v
 

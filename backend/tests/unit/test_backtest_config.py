@@ -89,7 +89,9 @@ class TestBacktestConfig:
 
     def test_too_many_symbols_rejected(self) -> None:
         kwargs = self._valid_kwargs()
-        kwargs["symbols"] = [f"SYM{chr(65 + i)}" for i in range(MAX_BACKTEST_SYMBOLS + 1)]
+        kwargs["symbols"] = [
+            f"SYM{chr(65 + i)}" for i in range(MAX_BACKTEST_SYMBOLS + 1)
+        ]
         with pytest.raises(ValidationError, match=f"Maximum {MAX_BACKTEST_SYMBOLS}"):
             BacktestConfig(**kwargs)
 

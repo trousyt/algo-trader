@@ -22,7 +22,7 @@ from app.backtest.data_loader import BacktestDataLoader
 from app.backtest.executor import BacktestExecution, Fill
 from app.backtest.metrics import BacktestMetrics, BacktestMetricsData
 from app.broker.types import Bar, OrderRequest, OrderType, Side
-from app.config import AppConfig, RiskConfig, VelezConfig
+from app.config import AppConfig, VelezConfig
 from app.engine.candle_aggregator import CandleAggregator
 from app.engine.indicators import IndicatorCalculator, IndicatorSet
 from app.models.backtest import BacktestRunModel, BacktestTradeModel
@@ -124,8 +124,10 @@ class BacktestRunner:
                         agg.flush()
                     # Force-close all positions
                     self._close_eod_positions(
-                        execution, completed_trades,
-                        last_bar_by_symbol, strategies,
+                        execution,
+                        completed_trades,
+                        last_bar_by_symbol,
+                        strategies,
                     )
                     # Cancel all pending orders
                     execution.cancel_all_pending()
@@ -153,8 +155,11 @@ class BacktestRunner:
             # Process fills
             for fill in fills:
                 self._handle_fill(
-                    fill, execution, circuit_breaker,
-                    strategies, completed_trades,
+                    fill,
+                    execution,
+                    circuit_breaker,
+                    strategies,
+                    completed_trades,
                 )
 
             # Aggregate candle
@@ -167,9 +172,12 @@ class BacktestRunner:
 
             # Strategy evaluation
             await self._evaluate_strategy(
-                candle, indicator_set,
-                strategies[bar.symbol], execution,
-                position_sizer, circuit_breaker,
+                candle,
+                indicator_set,
+                strategies[bar.symbol],
+                execution,
+                position_sizer,
+                circuit_breaker,
                 max_open_positions,
             )
 
@@ -181,8 +189,10 @@ class BacktestRunner:
             for agg in aggregators.values():
                 agg.flush()
             self._close_eod_positions(
-                execution, completed_trades,
-                last_bar_by_symbol, strategies,
+                execution,
+                completed_trades,
+                last_bar_by_symbol,
+                strategies,
             )
             execution.cancel_all_pending()
             daily_equity.append((current_date, execution.equity))
@@ -206,7 +216,9 @@ class BacktestRunner:
 
         # 6. Store results
         run_id = await self._store_results(
-            metrics, completed_trades, daily_equity,
+            metrics,
+            completed_trades,
+            daily_equity,
         )
 
         return BacktestResult(
@@ -240,17 +252,20 @@ class BacktestRunner:
                 execution.update_stop(symbol, new_stop)
             # Exit signal
             if strategy.should_exit(candle, position, indicators):
-                await execution.submit_order(OrderRequest(
-                    symbol=symbol,
-                    side=Side.SELL,
-                    order_type=OrderType.MARKET,
-                    qty=position.qty,
-                ))
+                await execution.submit_order(
+                    OrderRequest(
+                        symbol=symbol,
+                        side=Side.SELL,
+                        order_type=OrderType.MARKET,
+                        qty=position.qty,
+                    )
+                )
 
         elif execution.has_pending_entry(symbol):
             execution.increment_candle_count(symbol)
             if strategy.should_cancel_pending(
-                candle, execution.candles_since_order(symbol),
+                candle,
+                execution.candles_since_order(symbol),
             ):
                 execution.cancel_pending_entry(symbol)
 
@@ -282,13 +297,15 @@ class BacktestRunner:
                 return
 
             # Place buy-stop entry
-            await execution.submit_order(OrderRequest(
-                symbol=symbol,
-                side=Side.BUY,
-                order_type=OrderType.STOP,
-                qty=sizing_result.qty,
-                stop_price=entry_price,
-            ))
+            await execution.submit_order(
+                OrderRequest(
+                    symbol=symbol,
+                    side=Side.BUY,
+                    order_type=OrderType.STOP,
+                    qty=sizing_result.qty,
+                    stop_price=entry_price,
+                )
+            )
             execution.set_planned_stop(symbol, stop_price)
 
     # ------------------------------------------------------------------
@@ -392,7 +409,8 @@ class BacktestRunner:
 
             # Cancel any pending stop for this symbol
             to_remove = [
-                oid for oid, o in execution._pending_orders.items()
+                oid
+                for oid, o in execution._pending_orders.items()
                 if o.symbol == symbol
             ]
             for oid in to_remove:
@@ -450,10 +468,9 @@ class BacktestRunner:
         }
 
         # EOD equity curve for DB storage (daily granularity)
-        eq_curve_json = json.dumps([
-            {"date": str(d), "equity": str(eq)}
-            for d, eq in daily_equity
-        ])
+        eq_curve_json = json.dumps(
+            [{"date": str(d), "equity": str(eq)} for d, eq in daily_equity]
+        )
 
         run = BacktestRunModel(
             strategy=self._config.strategy,
@@ -478,18 +495,20 @@ class BacktestRunner:
             run_id = run.id
 
             for t in trades:
-                session.add(BacktestTradeModel(
-                    run_id=run_id,
-                    symbol=t.symbol,
-                    side=t.side,
-                    qty=t.qty,
-                    entry_price=t.entry_price,
-                    exit_price=t.exit_price,
-                    entry_at=t.entry_at.isoformat(),
-                    exit_at=t.exit_at.isoformat(),
-                    pnl=t.pnl,
-                    duration_seconds=t.duration_seconds,
-                ))
+                session.add(
+                    BacktestTradeModel(
+                        run_id=run_id,
+                        symbol=t.symbol,
+                        side=t.side,
+                        qty=t.qty,
+                        entry_price=t.entry_price,
+                        exit_price=t.exit_price,
+                        entry_at=t.entry_at.isoformat(),
+                        exit_at=t.exit_at.isoformat(),
+                        pnl=t.pnl,
+                        duration_seconds=t.duration_seconds,
+                    )
+                )
 
             await session.commit()
 
@@ -498,7 +517,9 @@ class BacktestRunner:
 
 
 def _resolve_strategy(
-    name: str, symbol: str, velez_config: VelezConfig,
+    name: str,
+    symbol: str,
+    velez_config: VelezConfig,
 ) -> Strategy:
     """Create strategy instance. Raises BacktestError for unknown names."""
     if name == "velez":

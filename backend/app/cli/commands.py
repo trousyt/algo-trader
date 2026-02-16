@@ -6,11 +6,16 @@ import asyncio
 import sys
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import click
 import httpx
 
 from app.config import AppConfig
+
+if TYPE_CHECKING:
+    from app.backtest.config import BacktestConfig
+    from app.backtest.runner import BacktestResult
 
 
 @click.group()
@@ -53,19 +58,27 @@ def status() -> None:
 
 @cli.command()
 @click.option("--strategy", default="velez", help="Strategy name (default: velez).")
-@click.option("--symbols", required=True, help="Comma-separated symbols (e.g. AAPL,TSLA).")
 @click.option(
-    "--start-date", required=True,
+    "--symbols", required=True, help="Comma-separated symbols (e.g. AAPL,TSLA)."
+)
+@click.option(
+    "--start-date",
+    required=True,
     type=click.DateTime(formats=["%Y-%m-%d"]),
     help="Start date (YYYY-MM-DD).",
 )
 @click.option(
-    "--end-date", required=True,
+    "--end-date",
+    required=True,
     type=click.DateTime(formats=["%Y-%m-%d"]),
     help="End date (YYYY-MM-DD).",
 )
-@click.option("--capital", default="25000", type=str, help="Initial capital (default: 25000).")
-@click.option("--slippage", default="0.01", type=str, help="Slippage per share (default: 0.01).")
+@click.option(
+    "--capital", default="25000", type=str, help="Initial capital (default: 25000)."
+)
+@click.option(
+    "--slippage", default="0.01", type=str, help="Slippage per share (default: 0.01)."
+)
 def backtest(
     strategy: str,
     symbols: str,
@@ -97,11 +110,11 @@ def backtest(
     _print_backtest_results(result, bt_config)
 
 
-async def _run_backtest(bt_config: "BacktestConfig") -> "BacktestResult":  # type: ignore[name-defined]  # noqa: F821
+async def _run_backtest(bt_config: BacktestConfig) -> BacktestResult:
     """Run the backtest with proper DB session."""
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    from app.backtest.runner import BacktestResult, BacktestRunner
+    from app.backtest.runner import BacktestRunner
 
     app_config = AppConfig()
     engine = create_async_engine(
@@ -119,16 +132,14 @@ async def _run_backtest(bt_config: "BacktestConfig") -> "BacktestResult":  # typ
 
 
 def _print_backtest_results(
-    result: "BacktestResult",  # type: ignore[name-defined]  # noqa: F821
-    config: "BacktestConfig",  # type: ignore[name-defined]  # noqa: F821
+    result: BacktestResult,
+    config: BacktestConfig,
 ) -> None:
     """Format and print backtest results to CLI."""
     m = result.metrics
 
     click.echo(f"\nBacktest Results: {config.strategy}")
-    click.echo(
-        f"Period: {config.start_date} to {config.end_date}"
-    )
+    click.echo(f"Period: {config.start_date} to {config.end_date}")
     click.echo(f"Symbols: {', '.join(config.symbols)}")
     click.echo(f"Initial Capital: ${config.initial_capital:,.2f}")
 
@@ -143,7 +154,9 @@ def _print_backtest_results(
     click.echo(f"  Total:           {m.total_trades}")
     if m.total_trades > 0:
         click.echo(f"  Winners:         {m.winning_trades} ({m.win_rate * 100:.1f}%)")
-        click.echo(f"  Losers:          {m.losing_trades} ({(1 - m.win_rate) * 100:.1f}%)")
+        click.echo(
+            f"  Losers:          {m.losing_trades} ({(1 - m.win_rate) * 100:.1f}%)"
+        )
         click.echo(f"  Avg Win:         ${m.avg_win:,.2f}")
         click.echo(f"  Avg Loss:        -${abs(m.avg_loss):,.2f}")
         click.echo(f"  Largest Win:     ${m.largest_win:,.2f}")

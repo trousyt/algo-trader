@@ -9,7 +9,7 @@ from decimal import Decimal
 import pytest
 
 from app.backtest.config import BacktestTradeData
-from app.backtest.metrics import BacktestMetrics, BacktestMetricsData
+from app.backtest.metrics import BacktestMetrics
 
 _ZERO = Decimal("0")
 
@@ -30,7 +30,8 @@ def _make_trade(
         entry_price=entry,
         exit_price=exit_price,
         entry_at=datetime(2025, 1, 2, 10, 0, tzinfo=UTC),
-        exit_at=datetime(2025, 1, 2, 10, 0, tzinfo=UTC) + timedelta(seconds=duration_seconds),
+        exit_at=datetime(2025, 1, 2, 10, 0, tzinfo=UTC)
+        + timedelta(seconds=duration_seconds),
         pnl=pnl,
         duration_seconds=duration_seconds,
     )
@@ -92,8 +93,12 @@ class TestAllWins:
             _make_trade(pnl=Decimal("50")),
         ]
         initial = Decimal("25000")
-        daily_eq = _make_daily_equity([Decimal("25100"), Decimal("25300"), Decimal("25350")])
-        eq_curve = _make_equity_curve([initial, Decimal("25100"), Decimal("25300"), Decimal("25350")])
+        daily_eq = _make_daily_equity(
+            [Decimal("25100"), Decimal("25300"), Decimal("25350")]
+        )
+        eq_curve = _make_equity_curve(
+            [initial, Decimal("25100"), Decimal("25300"), Decimal("25350")]
+        )
 
         metrics = BacktestMetrics.calculate(
             trades=trades,
@@ -153,19 +158,23 @@ class TestMixedTrades:
             _make_trade(pnl=Decimal("-50")),
         ]
         initial = Decimal("25000")
-        daily_eq = _make_daily_equity([
-            Decimal("25300"),
-            Decimal("25200"),
-            Decimal("25400"),
-            Decimal("25350"),
-        ])
-        eq_curve = _make_equity_curve([
-            initial,
-            Decimal("25300"),
-            Decimal("25200"),
-            Decimal("25400"),
-            Decimal("25350"),
-        ])
+        daily_eq = _make_daily_equity(
+            [
+                Decimal("25300"),
+                Decimal("25200"),
+                Decimal("25400"),
+                Decimal("25350"),
+            ]
+        )
+        eq_curve = _make_equity_curve(
+            [
+                initial,
+                Decimal("25300"),
+                Decimal("25200"),
+                Decimal("25400"),
+                Decimal("25350"),
+            ]
+        )
 
         metrics = BacktestMetrics.calculate(
             trades=trades,
@@ -262,7 +271,7 @@ class TestSharpeRatio:
         """
         initial = Decimal("10000")
         daily_values = [
-            Decimal("10100"),   # +1.0%
+            Decimal("10100"),  # +1.0%
             Decimal("10049.50"),  # -0.5% from 10100
             Decimal("10129.90"),  # +0.8% from 10049.50
             Decimal("10160.29"),  # +0.3% from 10129.90
@@ -273,7 +282,7 @@ class TestSharpeRatio:
         metrics = BacktestMetrics.calculate(
             trades=[_make_trade(pnl=Decimal("139.97"))],
             daily_equity=daily_eq,
-            equity_curve=_make_equity_curve([initial] + daily_values),
+            equity_curve=_make_equity_curve([initial, *daily_values]),
             initial_capital=initial,
         )
 
@@ -290,15 +299,19 @@ class TestSharpeRatio:
         """Verify sample std (n-1) is used, not population std (n)."""
         initial = Decimal("10000")
         # Two data points: different returns
-        daily_eq = _make_daily_equity([
-            Decimal("10100"),  # +1%
-            Decimal("10050"),  # -0.495% from 10100
-        ])
+        daily_eq = _make_daily_equity(
+            [
+                Decimal("10100"),  # +1%
+                Decimal("10050"),  # -0.495% from 10100
+            ]
+        )
 
         metrics = BacktestMetrics.calculate(
             trades=[_make_trade(pnl=Decimal("50"))],
             daily_equity=daily_eq,
-            equity_curve=_make_equity_curve([initial, Decimal("10100"), Decimal("10050")]),
+            equity_curve=_make_equity_curve(
+                [initial, Decimal("10100"), Decimal("10050")]
+            ),
             initial_capital=initial,
         )
 
@@ -327,11 +340,13 @@ class TestSharpeRatio:
     def test_sharpe_zero_std_returns_zero(self) -> None:
         """All days have zero return → std=0 → sharpe=0."""
         initial = Decimal("10000")
-        daily_eq = _make_daily_equity([
-            Decimal("10000"),
-            Decimal("10000"),
-            Decimal("10000"),
-        ])
+        daily_eq = _make_daily_equity(
+            [
+                Decimal("10000"),
+                Decimal("10000"),
+                Decimal("10000"),
+            ]
+        )
 
         metrics = BacktestMetrics.calculate(
             trades=[],
@@ -356,14 +371,16 @@ class TestMaxDrawdown:
 
     def test_known_equity_curve(self) -> None:
         """Peak 100 → trough 90 = 10% drawdown."""
-        eq = _make_equity_curve([
-            Decimal("100"),
-            Decimal("105"),
-            Decimal("110"),  # peak
-            Decimal("100"),
-            Decimal("99"),   # trough
-            Decimal("108"),
-        ])
+        eq = _make_equity_curve(
+            [
+                Decimal("100"),
+                Decimal("105"),
+                Decimal("110"),  # peak
+                Decimal("100"),
+                Decimal("99"),  # trough
+                Decimal("108"),
+            ]
+        )
         metrics = BacktestMetrics.calculate(
             trades=[_make_trade(pnl=Decimal("8"))],
             daily_equity=_make_daily_equity([Decimal("108")]),
@@ -376,11 +393,13 @@ class TestMaxDrawdown:
 
     def test_no_drawdown(self) -> None:
         """Monotonically increasing equity."""
-        eq = _make_equity_curve([
-            Decimal("100"),
-            Decimal("101"),
-            Decimal("102"),
-        ])
+        eq = _make_equity_curve(
+            [
+                Decimal("100"),
+                Decimal("101"),
+                Decimal("102"),
+            ]
+        )
         metrics = BacktestMetrics.calculate(
             trades=[_make_trade(pnl=Decimal("2"))],
             daily_equity=_make_daily_equity([Decimal("102")]),
@@ -400,14 +419,16 @@ class TestMaxDrawdown:
 
     def test_multiple_drawdowns_picks_largest(self) -> None:
         """Two drawdowns: 5% and 8%. Picks 8%."""
-        eq = _make_equity_curve([
-            Decimal("100"),
-            Decimal("105"),  # peak 1
-            Decimal("100"),  # dd1: 5/105 ≈ 4.76%
-            Decimal("110"),  # peak 2
-            Decimal("101"),  # dd2: 9/110 ≈ 8.18%
-            Decimal("115"),
-        ])
+        eq = _make_equity_curve(
+            [
+                Decimal("100"),
+                Decimal("105"),  # peak 1
+                Decimal("100"),  # dd1: 5/105 ≈ 4.76%
+                Decimal("110"),  # peak 2
+                Decimal("101"),  # dd2: 9/110 ≈ 8.18%
+                Decimal("115"),
+            ]
+        )
         metrics = BacktestMetrics.calculate(
             trades=[_make_trade(pnl=Decimal("15"))],
             daily_equity=_make_daily_equity([Decimal("115")]),
@@ -477,7 +498,7 @@ class TestAvgTradeDuration:
     def test_avg_duration(self) -> None:
         trades = [
             _make_trade(pnl=Decimal("100"), duration_seconds=3600),  # 1 hour
-            _make_trade(pnl=Decimal("50"), duration_seconds=7200),   # 2 hours
+            _make_trade(pnl=Decimal("50"), duration_seconds=7200),  # 2 hours
             _make_trade(pnl=Decimal("-30"), duration_seconds=1800),  # 30 min
         ]
         initial = Decimal("25000")
