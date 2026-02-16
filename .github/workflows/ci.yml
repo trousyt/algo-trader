@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Ruff lint
         run: uv run ruff check app/ tests/
@@ -55,7 +55,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: mypy
         run: uv run mypy app/
@@ -78,7 +78,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Run tests
         run: uv run pytest -v --tb=short

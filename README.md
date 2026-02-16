@@ -1,80 +1,255 @@
 # Algo Trader
 
-An algorithmic trading system for US equities that performs technical analysis on real-time market data, detects trading signals, and executes trades automatically.
+An algorithmic trading system for US equities that performs technical analysis on real-time market data, detects trading signals, and executes trades automatically via brokerage APIs.
 
-## Vision
+## Overview
 
-Build a production-grade automated trading platform that combines deterministic technical analysis strategies with AI-powered advisory analysis. The system scans for opportunities pre-market, monitors positions in real-time, manages risk automatically, and provides a polished web dashboard for monitoring and control.
+Algo Trader is a production-grade automated trading platform that combines deterministic technical analysis strategies with AI-powered advisory analysis. The system monitors positions in real-time, manages risk automatically, and provides CLI tools for backtesting and live trading.
 
-## Goals
+The core philosophy: **AI advises, the strategy engine decides.** AI agents provide analysis, confidence scores, and commentary as inputs to a deterministic strategy engine. The strategy engine always makes the final call. Same strategy code runs identically in backtest, paper, and live modes (Jesse-inspired architecture).
 
-- **Automate proven strategies** - Encode technical analysis rules (starting with the Velez SMA convergence strategy) and let the system execute them consistently without emotional interference
-- **Manage risk first** - Position sizing, stop-losses, daily loss limits, and a kill switch are built in from day one
-- **Learn and iterate** - Comprehensive trade logging, backtesting, and performance metrics to refine strategies over time
-- **Stay in control** - Paper trading by default, explicit opt-in for live trading, real-time monitoring dashboard, and Discord notifications
-- **AI as advisor, not autopilot** - AI agents provide analysis, confidence scores, and commentary as inputs to the deterministic strategy engine. The strategy engine always makes the final call.
+Paper trading is the default. Live trading requires an explicit environment variable opt-in. Real money is at stake — every component is designed with safety, crash recovery, and broker reconciliation in mind.
 
-## Key Features
+## Architecture
 
-### Trading Engine
-- Jesse-inspired strategy framework: define strategies as classes, run the same code in backtest, paper, and live modes
-- Real-time 2-minute candle data via Alpaca WebSocket
-- Order state machine with crash recovery and broker reconciliation
-- Structured logging with correlation IDs from signal detection through order execution
+```mermaid
+graph TB
+    subgraph CLI["CLI (Click)"]
+        START[algo-trader start]
+        BT[algo-trader backtest]
+        CFG[algo-trader config]
+    end
 
-### Pre-Market Scanner
-- Configurable filters: price range, relative volume, gap %, float, sector exclusions
-- Tiered watchlist output (Tier 1/2/3) with weighted scoring
-- Ramping scan schedule from 4:00 AM through 9:25 AM ET
+    subgraph Engine["Trading Engine (Step 7 - planned)"]
+        TE[TradingEngine Orchestrator]
+        EOD[EOD Timer]
+    end
 
-### Risk Management
-- 1-2% max risk per trade with automatic position sizing
-- Stop-loss placement per strategy rules
-- Daily loss limits and circuit breaker auto-pause
-- Paper-trading-only by default with explicit env var required for live trading
+    subgraph Strategy["Strategy Layer"]
+        SABC[Strategy ABC]
+        VS[VelezStrategy]
+        CA[CandleAggregator]
+        IC[IndicatorCalculator]
+        SMA[SMA Ring Buffer]
+    end
+
+    subgraph Orders["Order Management"]
+        OM[OrderManager]
+        OSM[OrderStateMachine]
+        SR[StartupReconciler]
+    end
+
+    subgraph Risk["Risk Management"]
+        RM[RiskManager]
+        PS[PositionSizer]
+        CB[CircuitBreaker]
+    end
+
+    subgraph Broker["Broker Layer (Alpaca)"]
+        BA[BrokerAdapter Protocol]
+        DP[DataProvider Protocol]
+        ABA[AlpacaBrokerAdapter]
+        ADP[AlpacaDataProvider]
+    end
+
+    subgraph Backtest["Backtesting"]
+        BR[BacktestRunner]
+        BE[BacktestExecution]
+        BDL[BacktestDataLoader]
+        BM[BacktestMetrics]
+    end
+
+    subgraph Data["Data Layer"]
+        DB[(SQLite WAL)]
+        ALM[Alembic Migrations]
+    end
+
+    START --> TE
+    BT --> BR
+    TE --> SABC
+    TE --> OM
+    TE --> RM
+    TE --> EOD
+    SABC --> VS
+    CA --> IC
+    IC --> SMA
+    OM --> OSM
+    OM --> BA
+    RM --> PS
+    RM --> CB
+    BA --> ABA
+    DP --> ADP
+    BR --> BE
+    BR --> BDL
+    BE --> BM
+    OM --> DB
+    BR --> DB
+    SR --> BA
+    SR --> DB
+    ABA -->|REST + WebSocket| ALPACA[Alpaca API]
+    ADP -->|WebSocket bars| ALPACA
+```
+
+## Planned Features
+
+### Phase 1 — Trading Engine + CLI (in progress)
+
+| Step | Component | Status |
+|------|-----------|--------|
+| 1 | Foundation scaffolding (config, DB, migrations) | Done |
+| 2 | Broker abstraction + Alpaca adapter (REST + WebSocket) | Done |
+| 3 | Strategy engine + Velez SMA convergence strategy | Done |
+| 4 | Order management + risk management (position sizing, circuit breaker) | Done |
+| 5 | Startup reconciliation + crash recovery | Done |
+| 6 | Backtesting engine (historical data, metrics, CLI) | Done |
+| 7 | TradingEngine orchestrator (live/paper trading loop) | Planned |
+| 8 | CLI enhancements + minimal web dashboard | Planned |
+
+### Phase 2 — Full Web UI + Advanced Features
+
+- 8-screen React dashboard (positions, scanner, strategies, agents, backtest, history, charts, settings)
+- Pre-market scanner with configurable filters
+- Short selling support
+- Advanced trade metrics and reporting
+
+### Phase 3 — Production Deployment
+
+- Docker Compose with health monitoring
+- Discord bot commands (two-way)
+- IBKR broker adapter
+
+### Phase 4 — AI Advisory System
+
+- Agent personas with configurable LLM models
+- Confidence scoring on detected signals
+- News/sentiment analysis, pattern recognition
+- Post-trade review commentary
+
+### Phase 5 — Go Live
+
+- Real capital deployment (above $25K for no PDT restriction)
+- SIP data upgrade for better fills
+
+## Known Limitations
+
+- **Paper trading only** — live trading env var gate exists but is untested with real capital
+- **Single strategy** — only VelezStrategy (SMA convergence) is implemented; multi-strategy routing deferred to Phase 2
+- **Long-only** — short selling not yet supported
+- **SMA indicators only** — IndicatorCalculator supports SMA; EMA, ATR, RSI, Bollinger need new implementations
+- **No web UI** — CLI-only interface; dashboard planned for Step 8
+- **Crash recovery uses emergency stops** — `emergency_stop_pct` fallback on restart instead of strategy-calculated stops (precise stop recovery deferred)
+- **Commission tracking stubbed** — commissions recorded as $0; needs real Alpaca trade event data
+- **SQLite only** — sufficient for current scale; PostgreSQL migration path exists via SQLAlchemy
+- **IEX data feed** — free tier with ~15-minute delay on some data; SIP upgrade available
+
+## Usage
+
+### Prerequisites
+
+- Python 3.12+
+- Alpaca account with API keys (paper trading account is free)
+
+### Configuration
+
+Copy the example environment file and add your Alpaca API credentials:
+
+```bash
+cd backend
+cp .env.example .env
+# Edit .env with your ALPACA_API_KEY and ALPACA_SECRET_KEY
+```
+
+Verify your configuration:
+
+```bash
+algo-trader config
+```
+
+Confirm `Paper: True` before running any commands.
 
 ### Backtesting
-- Same strategy classes used in live trading run against historical data
-- Performance metrics: equity curve, win rate, profit factor, Sharpe ratio, max drawdown
-- Monthly returns heatmap, trade-by-trade analysis, drawdown visualization
 
-### AI Advisory System
-- Agent personas with configurable LLM models and system prompts
-- Confidence scoring on detected signals as input to strategy decisions
-- News/sentiment analysis, pattern recognition, anomaly detection
-- Full commentary log for post-trade review
+Run a strategy backtest against historical data:
 
-### Web Dashboard
-- Real-time positions, P&L, and activity feed
-- 8 screens: Dashboard, Scanner, Strategies, Agents, Backtesting, Trade History, Charts, Settings
-- Dark theme, desktop-first, keyboard shortcuts
-- WebSocket-powered live updates
+```bash
+algo-trader backtest \
+  --strategy velez \
+  --symbols AAPL \
+  --start-date 2025-01-01 \
+  --end-date 2025-12-31
+```
 
-## Tech Stack
+### Live/Paper Trading (Step 7)
 
-| Layer | Technology |
-|-------|------------|
-| Language | Python 3.11+ |
-| Broker / Execution | Alpaca (`alpaca-py`) |
-| Market Data | Alpaca WebSocket (IEX free tier) |
-| Technical Analysis | `pandas-ta` |
-| Database | SQLite (WAL mode) via SQLAlchemy |
-| Web Backend | FastAPI + WebSocket |
-| Web Frontend | React + TypeScript |
-| Notifications | Discord webhooks |
-| Containerization | Docker |
+```bash
+algo-trader start   # Start the trading engine
+algo-trader status  # Check engine status
+algo-trader stop    # Graceful shutdown
+```
 
-## Project Status
+## Development
 
-**Phase**: Pre-development (design and planning)
+### Docker (recommended)
 
-The brainstorm and architecture review are complete. The project is ready for implementation planning via phased rollout:
+All backend commands run inside Docker to match the Linux production environment:
 
-1. **Phase 1** - Trading engine (CLI + minimal dashboard), Velez strategy, risk management, backtesting, paper trading
-2. **Phase 2** - Full web UI, pre-market scanner, short selling, advanced trade metrics
-3. **Phase 3** - Production Docker Compose, health monitoring, circuit breakers, Discord bot commands
-4. **Phase 4** - AI advisory system, agent personas, confidence scoring, post-trade review
-5. **Phase 5** - Go live with real capital (above $25K for no PDT restriction)
+```bash
+# Build the container
+docker compose build
+
+# Run tests
+docker compose run --rm app pytest tests/ -v
+
+# Lint and format check
+docker compose run --rm app ruff check app/ tests/
+docker compose run --rm app ruff format --check app/ tests/
+
+# Type check
+docker compose run --rm app mypy app/
+
+# CLI commands
+docker compose run --rm app config
+docker compose run --rm app backtest --strategy velez --symbols AAPL --start-date 2025-01-01 --end-date 2025-12-31
+```
+
+### Host Setup (alternative)
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Unit tests (fast, no API calls)
+pytest tests/unit/
+
+# Integration tests (requires Alpaca API keys)
+pytest tests/integration/
+
+# All tests
+pytest tests/
+```
+
+Current test coverage: **582 unit tests + 32 integration tests** (614 total), mypy strict clean, ruff clean.
+
+### Linting and Type Checking
+
+```bash
+ruff check app/ tests/
+ruff format --check app/ tests/
+mypy app/
+```
+
+### Database Migrations
+
+```bash
+alembic upgrade head     # Apply migrations
+alembic revision -m "description"  # Create new migration
+```
 
 ## Cost
 
@@ -87,13 +262,36 @@ The brainstorm and architecture review are complete. The project is ready for im
 | AI API (Claude/GPT/etc.) | - | ~$5-20/month |
 | **Total** | **$0** | **~$20-35/month** |
 
-## Getting Started
-
-> **Note**: The project is in the design phase. Setup instructions will be added as implementation begins.
-
 ## Documentation
 
-- [Brainstorm & Design Decisions](docs/brainstorms/2026-02-13-algo-trader-brainstorm.md) - Complete architecture decisions, strategy specifications, UI design, and phased rollout plan
+- [Brainstorm & Design Decisions](docs/brainstorms/2026-02-13-algo-trader-brainstorm.md)
+- [Phase 1 Master Plan](docs/plans/2026-02-13-feat-phase-1-trading-engine-plan.md)
+- [Architecture Decisions](docs/solutions/architecture-decisions/)
+
+## Troubleshooting
+
+### "No module named app"
+
+Make sure you're in the `backend/` directory and have installed the package in dev mode:
+
+```bash
+cd backend
+pip install -e ".[dev]"
+```
+
+### Alpaca API errors
+
+- Verify API keys in `.env` are for paper trading (not live)
+- Check `algo-trader config` shows `Paper: True`
+- Alpaca IEX feed requires the market to be open for real-time data
+
+### Tests failing with import errors
+
+Ensure Python 3.12+ is installed (`pandas-ta` requires it):
+
+```bash
+python --version  # Must be 3.12+
+```
 
 ## License
 
