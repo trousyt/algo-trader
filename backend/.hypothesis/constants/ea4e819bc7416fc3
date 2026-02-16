@@ -1,0 +1,4 @@
+# file: C:\Projects\github\algo-trader\backend\app\models\order.py
+# hypothesis_version: 6.151.6
+
+['0', 'broker_id', 'ck_order_state_role', 'ck_order_state_side', 'ck_trade_side', 'correlation_id', 'created_at', 'entry', 'exit_at', 'ix_order_state_state', 'ix_trade_correlation', 'ix_trade_symbol_exit', 'order_event', 'order_local_id', 'order_state', 'parent_id', 'pending_submit', 'recorded_at', 'state', 'strategy', 'symbol', 'trade', 'trade.trade_id', 'trade_note']

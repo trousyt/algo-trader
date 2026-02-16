@@ -1,0 +1,4 @@
+# file: C:\Projects\github\algo-trader\backend\app\broker\alpaca\mappers.py
+# hypothesis_version: 6.151.6
+
+['accepted', 'buy', 'canceled', 'expired', 'fill', 'filled', 'limit', 'long', 'market', 'new', 'partial_fill', 'partially_filled', 'pending_cancel', 'qty', 'rejected', 'replaced', 'sell', 'short', 'side', 'stop', 'stop_limit', 'symbol', 'time_in_force', 'trail_percent', 'trail_price', 'trailing_stop']

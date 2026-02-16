@@ -1,0 +1,4 @@
+# file: C:\Projects\github\algo-trader\backend\app\orders\order_manager.py
+# hypothesis_version: 6.151.6
+
+[1.0, 5.0, '0', 'broker_canceled', 'canceled', 'entry', 'entry_expiry', 'expired', 'fill', 'invalid_transition', 'long', 'order_canceled', 'order_filled', 'order_rejected', 'order_submitted', 'partial_fill', 'rejected', 'replaced', 'short', 'stop_cancel_failed', 'stop_cancel_timeout', 'stop_loss', 'stop_moved', 'stop_replace_failed', 'submit_failed', 'submitted', 'trade_closed', 'unknown', 'unknown_order_update']

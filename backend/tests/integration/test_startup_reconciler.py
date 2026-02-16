@@ -10,18 +10,13 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.broker.fake.broker import FakeBrokerAdapter
-from app.broker.types import (
-    BrokerOrderStatus,
-    OrderType,
-    Side,
-)
+from app.broker.types import BrokerOrderStatus
 from app.models.base import Base
 from app.models.order import OrderEventModel, OrderStateModel, TradeModel
 from app.orders.startup_reconciler import StartupReconciler
@@ -176,20 +171,22 @@ class TestFullCrashRecoveryFlow:
 
             # Verify stop order was created
             stops = (
-                await session.execute(
-                    select(OrderStateModel).where(
-                        OrderStateModel.order_role == OrderRole.STOP_LOSS.value,
+                (
+                    await session.execute(
+                        select(OrderStateModel).where(
+                            OrderStateModel.order_role == OrderRole.STOP_LOSS.value,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(stops) == 1
             assert stops[0].state == OrderState.SUBMITTED.value
             assert stops[0].symbol == "AAPL"
 
             # Verify all events logged
-            events = (
-                await session.execute(select(OrderEventModel))
-            ).scalars().all()
+            events = (await session.execute(select(OrderEventModel))).scalars().all()
             event_types = {e.event_type for e in events}
             assert "reconciled" in event_types
             assert "emergency_stop" in event_types
@@ -230,9 +227,7 @@ class TestReconciliationThenCircuitBreaker:
 
         # Reconstruct CircuitBreaker from today's trades
         async with db_session_factory() as session:
-            trades = (
-                await session.execute(select(TradeModel))
-            ).scalars().all()
+            trades = (await session.execute(select(TradeModel))).scalars().all()
 
         cb = CircuitBreaker(
             max_daily_loss_pct=Decimal("0.03"),
@@ -320,22 +315,30 @@ class TestMultiStrategy:
         # Verify both orders are FILLED
         async with db_session_factory() as session:
             orders = (
-                await session.execute(
-                    select(OrderStateModel).where(
-                        OrderStateModel.order_role == OrderRole.ENTRY.value,
+                (
+                    await session.execute(
+                        select(OrderStateModel).where(
+                            OrderStateModel.order_role == OrderRole.ENTRY.value,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert all(o.state == OrderState.FILLED.value for o in orders)
 
             # Verify stop orders created for both symbols
             stops = (
-                await session.execute(
-                    select(OrderStateModel).where(
-                        OrderStateModel.order_role == OrderRole.STOP_LOSS.value,
+                (
+                    await session.execute(
+                        select(OrderStateModel).where(
+                            OrderStateModel.order_role == OrderRole.STOP_LOSS.value,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             stop_symbols = {s.symbol for s in stops}
             assert stop_symbols == {"AAPL", "TSLA"}
 

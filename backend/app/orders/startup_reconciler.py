@@ -114,14 +114,15 @@ class StartupReconciler:
             ReconciliationFatalError: If broker reads fail after retries.
         """
         # SETUP: fetch broker state in parallel
-        broker_positions, broker_open_orders, broker_recent_orders = (
-            await self._fetch_broker_state()
-        )
+        (
+            broker_positions,
+            broker_open_orders,
+            broker_recent_orders,
+        ) = await self._fetch_broker_state()
 
         # Build lookup maps
         broker_order_map: dict[str, OrderStatus] = {
-            o.broker_order_id: o
-            for o in [*broker_open_orders, *broker_recent_orders]
+            o.broker_order_id: o for o in [*broker_open_orders, *broker_recent_orders]
         }
 
         # Load local non-terminal orders
@@ -682,9 +683,7 @@ class StartupReconciler:
                 )
             )
         except Exception as exc:
-            msg = (
-                f"Market sell fallback also failed for {position.symbol}: {exc}"
-            )
+            msg = f"Market sell fallback also failed for {position.symbol}: {exc}"
             log.critical("market_sell_fallback_failed", detail=msg)
             errors.append(msg)
 

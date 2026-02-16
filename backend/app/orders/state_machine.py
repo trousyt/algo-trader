@@ -88,7 +88,12 @@ class OrderStateMachine:
 
         self._state = to
 
-    def force_state(self, new_state: OrderState, *, _reconciliation: bool = False) -> None:
+    def force_state(
+        self,
+        new_state: OrderState,
+        *,
+        _reconciliation: bool = False,
+    ) -> None:
         """Force-set state without transition validation.
 
         Used ONLY during startup reconciliation to correct local state

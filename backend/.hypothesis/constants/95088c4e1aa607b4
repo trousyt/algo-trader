@@ -1,0 +1,4 @@
+# file: C:\Projects\github\algo-trader\backend\app\broker\alpaca\data.py
+# hypothesis_version: 6.151.6
+
+[1.0, 5.0, 10.0, 401, 403, 10000, '15Min', '1Day', '1Hour', '1Min', '5Min', 'alpaca-data-stream', 'status_code']

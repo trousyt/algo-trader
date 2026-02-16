@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.broker.fake.broker import FakeBrokerAdapter
 from app.broker.types import (
     BrokerOrderStatus,
+    OrderRequest,
     OrderType,
     Side,
 )
@@ -231,12 +232,16 @@ class TestOrderReconciliation:
 
             # Verify audit event
             events = (
-                await session.execute(
-                    select(OrderEventModel).where(
-                        OrderEventModel.order_local_id == "local-001",
+                (
+                    await session.execute(
+                        select(OrderEventModel).where(
+                            OrderEventModel.order_local_id == "local-001",
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(events) == 1
             assert events[0].event_type == "reconciled"
             assert events[0].new_state == OrderState.FILLED.value
@@ -341,12 +346,16 @@ class TestOrderReconciliation:
             assert order.state == OrderState.SUBMIT_FAILED.value
 
             events = (
-                await session.execute(
-                    select(OrderEventModel).where(
-                        OrderEventModel.order_local_id == "local-001",
+                (
+                    await session.execute(
+                        select(OrderEventModel).where(
+                            OrderEventModel.order_local_id == "local-001",
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(events) == 1
             assert "no_broker_id_on_startup" in (events[0].detail or "")
 
@@ -419,7 +428,7 @@ class TestPositionReconciliation:
         self,
         db_session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
-        """Broker has position, no local match -> create orphan with deterministic ID."""
+        """Broker position with no local match -> orphan with deterministic ID."""
         broker = FakeBrokerAdapter(
             positions=[make_position(symbol="TSLA", avg_entry_price=Decimal("200.00"))],
         )
@@ -433,13 +442,17 @@ class TestPositionReconciliation:
         # Verify orphan record
         async with db_session_factory() as session:
             orders = (
-                await session.execute(
-                    select(OrderStateModel).where(
-                        OrderStateModel.symbol == "TSLA",
-                        OrderStateModel.order_role == OrderRole.ENTRY.value,
+                (
+                    await session.execute(
+                        select(OrderStateModel).where(
+                            OrderStateModel.symbol == "TSLA",
+                            OrderStateModel.order_role == OrderRole.ENTRY.value,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(orders) == 1
             assert orders[0].state == OrderState.FILLED.value
             assert orders[0].strategy == "unknown"
@@ -447,12 +460,16 @@ class TestPositionReconciliation:
 
             # Verify orphan event
             events = (
-                await session.execute(
-                    select(OrderEventModel).where(
-                        OrderEventModel.event_type == "orphan_created",
+                (
+                    await session.execute(
+                        select(OrderEventModel).where(
+                            OrderEventModel.event_type == "orphan_created",
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(events) == 1
 
     async def test_unprotected_position_gets_stop(
@@ -493,6 +510,7 @@ class TestPositionReconciliation:
 
         # Verify stop order: qty from broker position (D7), price = 150 * 0.98
         stop_order = broker.submitted_orders[0]
+        assert isinstance(stop_order, OrderRequest)
         assert stop_order.symbol == "AAPL"
         assert stop_order.side == Side.SELL
         assert stop_order.qty == Decimal("100")
@@ -502,12 +520,16 @@ class TestPositionReconciliation:
         # Verify emergency stop event in DB
         async with db_session_factory() as session:
             events = (
-                await session.execute(
-                    select(OrderEventModel).where(
-                        OrderEventModel.event_type == "emergency_stop",
+                (
+                    await session.execute(
+                        select(OrderEventModel).where(
+                            OrderEventModel.event_type == "emergency_stop",
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             assert len(events) == 1
 
     async def test_protected_position_no_duplicate_stop(

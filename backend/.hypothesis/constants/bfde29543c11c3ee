@@ -1,0 +1,4 @@
+# file: C:\Projects\github\algo-trader\backend\app\orders\types.py
+# hypothesis_version: 6.151.6
+
+['accepted', 'canceled', 'entry', 'exit_market', 'expired', 'filled', 'partially_filled', 'pending_submit', 'rejected', 'stop_loss', 'submit_failed', 'submitted']
