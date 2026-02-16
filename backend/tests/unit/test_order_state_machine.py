@@ -13,7 +13,6 @@ from hypothesis import strategies as st
 from app.orders.state_machine import InvalidTransitionError, OrderStateMachine
 from app.orders.types import TERMINAL_STATES, OrderState
 
-
 # --- Valid transition test data ---
 
 VALID_TRANSITIONS: list[tuple[OrderState, OrderState]] = [
