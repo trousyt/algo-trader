@@ -58,6 +58,7 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 
 ### Python Style
 - **Formatter/Linter**: Ruff (replaces Black, Flake8, isort — single tool)
+- **Pre-push gate**: Always run `ruff check app/ tests/` and `ruff format --check app/ tests/` on the full codebase before pushing — never just check individual files piecemeal
 - **Type checker**: mypy with `strict = true`
 - **Line length**: 88 (Ruff default)
 - **Quotes**: Double quotes

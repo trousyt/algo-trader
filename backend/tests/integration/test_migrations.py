@@ -86,3 +86,56 @@ class TestMigrationUpgrade:
         assert expected_triggers.issubset(trigger_names), (
             f"Missing triggers: {expected_triggers - trigger_names}"
         )
+
+
+class TestMigration002:
+    """Test that migration 002 adds order_role, strategy, and parent_id index."""
+
+    def test_order_role_column_exists(self, migrated_engine: sa.engine.Engine) -> None:
+        inspector = inspect(migrated_engine)
+        columns = {col["name"] for col in inspector.get_columns("order_state")}
+        assert "order_role" in columns
+
+    def test_strategy_column_exists(self, migrated_engine: sa.engine.Engine) -> None:
+        inspector = inspect(migrated_engine)
+        columns = {col["name"] for col in inspector.get_columns("order_state")}
+        assert "strategy" in columns
+
+    def test_parent_id_index_exists(self, migrated_engine: sa.engine.Engine) -> None:
+        inspector = inspect(migrated_engine)
+        indexes = {idx["name"] for idx in inspector.get_indexes("order_state")}
+        assert "ix_order_state_parent_id" in indexes
+
+    def test_side_check_allows_buy_sell(
+        self, migrated_engine: sa.engine.Engine
+    ) -> None:
+        """Side CHECK accepts 'buy' and 'sell'."""
+        with migrated_engine.connect() as conn:
+            conn.execute(
+                text(
+                    "INSERT INTO order_state "
+                    "(local_id, correlation_id, symbol, side, order_type, "
+                    "order_role, qty_requested, state, created_at, updated_at) "
+                    "VALUES "
+                    "('test-buy', 'c1', 'AAPL', 'buy', 'market', 'entry', "
+                    "'10', 'pending_submit', '2026-02-15', '2026-02-15')"
+                )
+            )
+            conn.commit()
+
+    def test_triggers_survive_migration_002(
+        self, migrated_engine: sa.engine.Engine
+    ) -> None:
+        """Immutability triggers still exist after batch mode migration."""
+        with migrated_engine.connect() as conn:
+            triggers = conn.execute(
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name"
+                )
+            ).fetchall()
+            trigger_names = {row[0] for row in triggers}
+
+        assert "no_update_order_event" in trigger_names
+        assert "no_delete_order_event" in trigger_names
+        assert "no_update_trade" in trigger_names
+        assert "no_delete_trade" in trigger_names
