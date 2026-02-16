@@ -1064,3 +1064,137 @@ class TestConvenienceMethods:
         pos = ex.get_position("AAPL")
         assert pos.market_value == Decimal("15500")
         assert pos.unrealized_pl == Decimal("500")
+
+
+# ---------------------------------------------------------------------------
+# Ghost trade prevention: market exit cancels orphaned stop-loss
+# ---------------------------------------------------------------------------
+T4 = T0 + timedelta(minutes=4)
+T5 = T0 + timedelta(minutes=5)
+
+
+class TestOrphanedStopCancellation:
+    """When a market exit closes a position, the pending stop-loss must be
+    canceled. Otherwise the orphaned stop triggers later and records a ghost
+    trade with no corresponding cash flow.
+    """
+
+    @pytest.mark.asyncio
+    async def test_market_exit_cancels_pending_stop(self) -> None:
+        """Market sell closes position and cancels the orphaned stop-loss."""
+        ex = _make_executor(slippage=Decimal("0"))
+
+        # 1. Buy via market order
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.BUY,
+                qty=Decimal("6"),
+                order_type=OrderType.MARKET,
+            )
+        )
+        bar0 = make_bar(
+            timestamp=T0,
+            open=Decimal("200"),
+            high=Decimal("201"),
+            low=Decimal("199"),
+            close=Decimal("200"),
+        )
+        fills = ex.process_bar(bar0)
+        assert len(fills) == 1  # entry filled
+
+        # 2. Place stop-loss at 195
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.SELL,
+                qty=Decimal("6"),
+                order_type=OrderType.STOP,
+                stop_price=Decimal("195"),
+            )
+        )
+
+        # 3. Place market sell (strategy exit)
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.SELL,
+                qty=Decimal("6"),
+                order_type=OrderType.MARKET,
+            )
+        )
+
+        # 4. Next bar: stop doesn't trigger (low=198 > 195), market sell fills
+        bar1 = make_bar(
+            timestamp=T1,
+            open=Decimal("199"),
+            high=Decimal("200"),
+            low=Decimal("198"),
+            close=Decimal("199"),
+        )
+        fills = ex.process_bar(bar1)
+        assert len(fills) == 1  # only market exit
+        assert fills[0].side == Side.SELL
+        assert not ex.has_position("AAPL")
+
+        # 5. The orphaned stop-loss should have been canceled
+        bar2 = make_bar(
+            timestamp=T2,
+            open=Decimal("194"),
+            high=Decimal("195"),
+            low=Decimal("193"),
+            close=Decimal("194"),
+        )
+        fills = ex.process_bar(bar2)
+        assert fills == []  # no ghost fill
+
+        # Cash should be correct: started 25000, bought 6@200, sold 6@199
+        assert ex.cash == Decimal("25000") - Decimal("1200") + Decimal("1194")
+        assert ex.equity == Decimal("24994")
+
+    @pytest.mark.asyncio
+    async def test_orphaned_stop_cleaned_up_on_process_bar(self) -> None:
+        """If a stop-loss is pending but no position exists, it's cleaned up."""
+        ex = _make_executor(slippage=Decimal("0"))
+
+        # Create position and stop-loss
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.BUY,
+                qty=Decimal("6"),
+                order_type=OrderType.MARKET,
+            )
+        )
+        bar0 = make_bar(
+            timestamp=T0,
+            open=Decimal("200"),
+            high=Decimal("201"),
+            low=Decimal("199"),
+            close=Decimal("200"),
+        )
+        ex.process_bar(bar0)
+
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.SELL,
+                qty=Decimal("6"),
+                order_type=OrderType.STOP,
+                stop_price=Decimal("195"),
+            )
+        )
+
+        # Manually close position (simulates EOD force-close by runner)
+        del ex._positions["AAPL"]
+
+        # Stop-loss should NOT trigger — no position exists
+        bar_low = make_bar(
+            timestamp=T1,
+            open=Decimal("194"),
+            high=Decimal("195"),
+            low=Decimal("190"),
+            close=Decimal("191"),
+        )
+        fills = ex.process_bar(bar_low)
+        assert fills == []  # orphaned stop cleaned up, no ghost fill

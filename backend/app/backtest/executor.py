@@ -273,8 +273,14 @@ class BacktestExecution:
         """Stop-loss: triggers when bar.low <= stop_price.
 
         Skip if this symbol had an entry fill this bar (same-bar prevention).
+        Skip if no position exists (already closed by market exit).
         """
         assert order.stop_price is not None
+
+        # No position to close — orphaned stop-loss
+        if order.symbol not in self._positions:
+            del self._pending_orders[order.order_id]
+            return None
 
         # Same-bar prevention: don't trigger stop on the bar entry filled
         if order.symbol in self._entry_filled_this_bar:
@@ -338,6 +344,15 @@ class BacktestExecution:
                 self._cash += proceeds
                 self._closed_positions[order.symbol] = pos
                 del self._positions[order.symbol]
+                # Cancel any remaining pending orders for this symbol
+                # (e.g., orphaned stop-loss after a market exit)
+                orphaned = [
+                    oid
+                    for oid, o in self._pending_orders.items()
+                    if o.symbol == order.symbol and oid != order.order_id
+                ]
+                for oid in orphaned:
+                    del self._pending_orders[oid]
 
         # Remove from pending orders
         del self._pending_orders[order.order_id]
