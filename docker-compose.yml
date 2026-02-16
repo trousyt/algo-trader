@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    env_file:
+      - backend/.env
+    # TODO(step7): replace with ["start"] when TradingEngine is implemented
+    command: ["--help"]
+    # Signal handling infrastructure (prerequisite for Step 7 loop.add_signal_handler)
+    init: true              # tini reaps zombies, forwards signals
+    stop_signal: SIGTERM    # explicit (matches loop.add_signal_handler)
+    stop_grace_period: 30s  # allow time for graceful position management
+    volumes:
+      # Source code for dev iteration
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+      - ./backend/alembic:/app/alembic
+      # SQLite persistence across container restarts
+      - ./backend/data:/app/data
+      # Config files — mount so changes reflect without rebuild
+      - ./backend/mypy.ini:/app/mypy.ini
+      - ./backend/pyproject.toml:/app/pyproject.toml

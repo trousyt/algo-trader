@@ -1,0 +1,22 @@
+# Virtual environment (hundreds of MB)
+.venv/
+
+# Environment files (API keys, secrets)
+.env
+.env.*
+
+# SQLite database
+data/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

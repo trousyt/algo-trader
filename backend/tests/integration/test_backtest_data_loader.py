@@ -136,6 +136,4 @@ class TestBacktestDataLoader:
         for bar in bars:
             bar_time = bar.timestamp.astimezone(et).time()
             assert bar_time.hour >= 9
-            assert bar_time.hour < 16 or (
-                bar_time.hour == 9 and bar_time.minute >= 30
-            )
+            assert bar_time.hour < 16 or (bar_time.hour == 9 and bar_time.minute >= 30)

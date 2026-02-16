@@ -493,25 +493,12 @@ class OrderManager:
         entry_order: OrderStateModel,
         fill_update: TradeUpdate,
     ) -> None:
-        """Submit stop-loss after entry fill. Retry 3x, market sell fallback."""
-        # Find the stop price from parent entry's strategy signal
-        # For now, use the entry's stop info stored on the signal
-        # The stop_loss_price is not stored on OrderStateModel,
-        # so we need to find it from the entry's context.
-        # In practice, the TradingEngine will store this.
-        # For the OrderManager, the stop price comes from the
-        # entry order's original signal context.
-        #
-        # SIMPLIFIED: The caller (TradingEngine) provides the stop price
-        # when it creates the signal. We need to retrieve it.
-        # For now, we store the stop price in the entry order's
-        # avg_fill_price field is used for the actual fill price.
-        #
-        # The stop_loss_price should be passed by the strategy/engine.
-        # For Phase C, OrderManager submits stops via a separate method.
-        # The TradingEngine (Step 5) will call submit_stop_loss() after fill.
+        """No-op. Stop-loss submission is TradingEngine's responsibility.
 
-        # For testability, we'll have submit_stop_loss as a separate method
+        TradingEngine._handle_entry_fill() calls submit_stop_loss() after
+        entry fills. OrderManager does NOT submit stop-losses autonomously
+        to avoid duplicate orders. See submit_stop_loss() for the real impl.
+        """
         pass
 
     async def submit_stop_loss(

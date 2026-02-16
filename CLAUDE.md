@@ -17,12 +17,13 @@ Algo-trader is an algorithmic trading system for US equities. It performs techni
 - **AI Role**: Advisory ONLY. AI provides analysis, commentary, and confidence scores as inputs to the deterministic strategy engine. AI does NOT make trade decisions autonomously.
 - **Notifications**: Discord webhooks (one-way initially; bot commands added later)
 - **Containerization**: Docker
+- **Platform**: Linux only. Development and production both run in Docker/Linux. Do not write Windows-specific code or platform-conditional branches. `SIGTERM`/`SIGINT` via `loop.add_signal_handler()` is the only signal handling pattern needed.
 
 ## Engineering Standards
 
 ### Development Workflow (non-negotiable)
 
-This workflow MUST be followed for all work. Never skip phases or use ad-hoc planning.
+This workflow MUST be followed for all work. Never skip phases or use ad-hoc planning. Never use Claude Code's built-in plan mode (`EnterPlanMode`) — always use `/workflows:plan` instead.
 
 1. **`/workflows:brainstorm`** — Ideation and exploration. Use before planning when requirements are unclear, multiple approaches exist, or the problem space needs exploration. Outputs go to `docs/brainstorms/`.
 2. **`/workflows:plan`** — Work planning. ALWAYS use before any feature, refactor, or bug fix. Plans are stored in `docs/plans/` with date-prefixed filenames (e.g., `2026-02-15-feat-feature-name-plan.md`). Never store plans in `.claude/plans/` or other locations.
@@ -56,6 +57,32 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - **Test-driven development** - Use `tdd` skill. Write failing test first, then minimal code to pass, then refactor. No production code without a failing test
 - **CLI smoke testing** - When changing CLI commands, run the actual CLI end-to-end (not just unit tests) to verify real output and error handling. **Safety gate**: before any CLI smoke test that touches the broker, run `cli config` and confirm `Paper: True`. Never run CLI smoke tests against a live trading account
 - **Comprehensive testing** - Unit tests, integration tests, e2e tests. All tests pass before merge
+
+### Plan Review Agents (curated list — do not auto-discover)
+
+When running `/deepen-plan`, `/plan_review`, or any plan/code review workflow, use ONLY this curated agent list. Do not dynamically discover agents.
+
+**Backend (Python) projects:**
+- `security-sentinel`
+- `performance-oracle`
+- `architecture-strategist`
+- `pattern-recognition-specialist`
+- `data-integrity-guardian`
+- `data-migration-expert`
+- `code-simplicity-reviewer`
+- `kieran-python-reviewer`
+
+**Frontend (Web/React/TS) projects:**
+- `kieran-typescript-reviewer`
+- `julik-frontend-races-reviewer`
+- `frontend-design`
+
+**Universal (all projects):**
+- `agent-native-reviewer`
+
+### Review Agent Result Persistence
+
+When running review agents in the background, instruct each agent to write its findings to `memory/reviewer-findings/{agent-name}-findings.md`. This avoids the empty background output file problem. Clean up findings after they've been synthesized into the plan.
 
 ### Python Style
 - **Formatter/Linter**: Ruff (replaces Black, Flake8, isort — single tool)
@@ -119,8 +146,41 @@ This workflow MUST be followed for all work. Never skip phases or use ad-hoc pla
 - Order state machine with crash recovery and broker reconciliation
 - Never commit API keys or secrets (`.env` + `.env.example`)
 
+### Docker Development
+
+All backend commands run inside Docker to ensure Linux-only code (signal handlers, async patterns) is tested on the target platform.
+
+| Task | Command |
+|------|---------|
+| Build | `docker compose build` |
+| Run tests | `docker compose run --rm app pytest tests/ -v` |
+| Run lint | `docker compose run --rm app ruff check app/ tests/` |
+| Run format check | `docker compose run --rm app ruff format --check app/ tests/` |
+| Run type check | `docker compose run --rm app mypy app/` |
+| Run CLI | `docker compose run --rm app config` |
+| Run backtest | `docker compose run --rm app backtest --strategy velez --symbols AAPL --start-date 2025-01-01 --end-date 2025-12-31` |
+| Run migrations | `docker compose run --rm app alembic upgrade head` |
+
+**When to use Docker vs. host:**
+- **Docker**: pytest, ruff check, ruff format --check, mypy, CLI commands (backtest, config), web server
+- **Host**: `alembic revision --autogenerate` (generates migration files on host filesystem), `ruff format` (auto-fix writes to host files)
+
+### README.md Maintenance
+
+Keep `README.md` up to date as features are planned and implemented. This file is for **human consumption** — developers, contributors, and anyone evaluating the project. Update it when completing a plan or merging a feature. Required sections in order:
+
+1. **Title** — Project name + one-line description
+2. **Build/deploy status** — CI badges, build status
+3. **Overview** — High-level product vision and what the system does (2-3 paragraphs max)
+4. **Architecture** — High-level Mermaid diagram showing current system components and their relationships
+5. **Planned features** — Roadmap of what's built vs. what's coming, organized by phase
+6. **Known limitations** — Honest list of what the system doesn't do yet or where it falls short
+7. **Usage instructions** — How to run the system (CLI commands, configuration, paper vs. live)
+8. **Compiling/dev instructions** — Prerequisites, setup, how to run tests, Docker
+9. **Troubleshooting** — Common issues and solutions
+
 ## Key Design Docs
 
-- README: `README.md` (keep up to date as development progresses)
+- README: `README.md`
 - Brainstorm: `docs/brainstorms/2026-02-13-algo-trader-brainstorm.md`
 - Phase 1 Plan: `docs/plans/2026-02-13-feat-phase-1-trading-engine-plan.md`
