@@ -1067,6 +1067,71 @@ class TestConvenienceMethods:
 
 
 # ---------------------------------------------------------------------------
+# Volume fraction warning
+# ---------------------------------------------------------------------------
+class TestVolumeFractionWarning:
+    @pytest.mark.asyncio
+    async def test_warns_when_fill_exceeds_volume_fraction(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Log warning when fill qty > 10% of bar volume."""
+        ex = _make_executor(slippage=Decimal("0"))
+
+        # Buy 100 shares
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.BUY,
+                qty=Decimal("100"),
+                order_type=OrderType.MARKET,
+            )
+        )
+
+        # Bar with volume=500 → 100/500 = 20% > 10% threshold
+        bar = make_bar(
+            timestamp=T0,
+            open=Decimal("150"),
+            high=Decimal("151"),
+            low=Decimal("149"),
+            close=Decimal("150"),
+            volume=500,
+        )
+        ex.process_bar(bar)
+        captured = capsys.readouterr()
+        assert "fill_exceeds_volume_fraction" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_no_warning_when_fill_within_volume_fraction(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """No warning when fill qty <= 10% of bar volume."""
+        ex = _make_executor(slippage=Decimal("0"))
+
+        # Buy 10 shares
+        await ex.submit_order(
+            OrderRequest(
+                symbol="AAPL",
+                side=Side.BUY,
+                qty=Decimal("10"),
+                order_type=OrderType.MARKET,
+            )
+        )
+
+        # Bar with volume=10000 → 10/10000 = 0.1% << 10% threshold
+        bar = make_bar(
+            timestamp=T0,
+            open=Decimal("150"),
+            high=Decimal("151"),
+            low=Decimal("149"),
+            close=Decimal("150"),
+            volume=10000,
+        )
+        ex.process_bar(bar)
+        captured = capsys.readouterr()
+        assert "fill_exceeds_volume_fraction" not in captured.out
+
+
+# ---------------------------------------------------------------------------
 # Ghost trade prevention: market exit cancels orphaned stop-loss
 # ---------------------------------------------------------------------------
 T4 = T0 + timedelta(minutes=4)

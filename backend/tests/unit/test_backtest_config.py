@@ -27,7 +27,6 @@ class TestBacktestConfig:
             "end_date": date(2025, 3, 31),
             "initial_capital": Decimal("25000"),
             "slippage_per_share": Decimal("0.01"),
-            "candle_interval_minutes": 2,
         }
 
     def test_valid_config(self) -> None:
@@ -45,7 +44,6 @@ class TestBacktestConfig:
         assert config.strategy == "velez"
         assert config.initial_capital == Decimal("25000")
         assert config.slippage_per_share == Decimal("0.01")
-        assert config.candle_interval_minutes == 2
 
     def test_multiple_symbols(self) -> None:
         kwargs = self._valid_kwargs()
@@ -170,21 +168,6 @@ class TestBacktestConfig:
         kwargs["slippage_per_share"] = Decimal("0")
         config = BacktestConfig(**kwargs)
         assert config.slippage_per_share == Decimal("0")
-
-    # --- Interval validation ---
-
-    def test_invalid_interval_rejected(self) -> None:
-        kwargs = self._valid_kwargs()
-        kwargs["candle_interval_minutes"] = 3
-        with pytest.raises(ValidationError, match="Invalid interval"):
-            BacktestConfig(**kwargs)
-
-    @pytest.mark.parametrize("interval", [1, 2, 5, 10])
-    def test_valid_intervals_accepted(self, interval: int) -> None:
-        kwargs = self._valid_kwargs()
-        kwargs["candle_interval_minutes"] = interval
-        config = BacktestConfig(**kwargs)
-        assert config.candle_interval_minutes == interval
 
 
 class TestBacktestTradeData:

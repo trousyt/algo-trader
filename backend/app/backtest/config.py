@@ -13,8 +13,6 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.config import VALID_CANDLE_INTERVALS
-
 MAX_BACKTEST_DAYS = 365
 MAX_BACKTEST_SYMBOLS = 10
 
@@ -36,7 +34,6 @@ class BacktestConfig(BaseModel):
         ge=Decimal("0"),
         le=Decimal("1"),
     )
-    candle_interval_minutes: int = Field(default=2)
 
     @field_validator("strategy")
     @classmethod
@@ -59,16 +56,6 @@ class BacktestConfig(BaseModel):
         for s in v:
             if not re.match(r"^[A-Z]{1,5}$", s):
                 raise ValueError(f"Invalid symbol: {s}")
-        return v
-
-    @field_validator("candle_interval_minutes")
-    @classmethod
-    def validate_interval(cls, v: int) -> int:
-        if v not in VALID_CANDLE_INTERVALS:
-            raise ValueError(
-                f"Invalid interval: {v}. "
-                f"Must be one of {sorted(VALID_CANDLE_INTERVALS)}"
-            )
         return v
 
     @model_validator(mode="after")

@@ -170,6 +170,18 @@ class BacktestExecution:
             if fill is not None:
                 fills.append(fill)
 
+        # Volume fraction warning
+        if bar.volume and bar.volume > 0:
+            for fill in fills:
+                if fill.qty > bar.volume * _VOLUME_WARN_FRACTION:
+                    log.warning(
+                        "fill_exceeds_volume_fraction",
+                        symbol=fill.symbol,
+                        fill_qty=str(fill.qty),
+                        bar_volume=str(bar.volume),
+                        fraction=str(fill.qty / bar.volume),
+                    )
+
         return fills
 
     def update_market_prices(self, bar: Bar) -> None:
@@ -322,9 +334,6 @@ class BacktestExecution:
         timestamp: datetime,
     ) -> Fill:
         """Execute a fill: update positions, cash, remove order."""
-        # Volume warning
-        # (checked in process_bar context — bar not available here, skip for now)
-
         if order.side == Side.BUY:
             cost = order.qty * fill_price
             self._cash -= cost

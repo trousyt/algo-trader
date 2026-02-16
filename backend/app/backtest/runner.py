@@ -1,8 +1,11 @@
 """Backtest runner — orchestrates the full simulation loop.
 
 Wires together: BacktestExecution, CandleAggregator, IndicatorCalculator,
-Strategy (VelezStrategy), PositionSizer, CircuitBreaker.
+Strategy, PositionSizer, CircuitBreaker.
 Stores results in backtest_run / backtest_trade DB tables.
+
+Strategy-agnostic: the runner reads candle interval and indicator
+requirements from Strategy instances, never from strategy-specific config.
 """
 
 from __future__ import annotations
@@ -22,7 +25,7 @@ from app.backtest.data_loader import BacktestDataLoader
 from app.backtest.executor import BacktestExecution, Fill
 from app.backtest.metrics import BacktestMetrics, BacktestMetricsData
 from app.broker.types import Bar, OrderRequest, OrderType, Side
-from app.config import AppConfig, VelezConfig
+from app.config import AppConfig
 from app.engine.candle_aggregator import CandleAggregator
 from app.engine.indicators import IndicatorCalculator, IndicatorSet
 from app.models.backtest import BacktestRunModel, BacktestTradeModel
@@ -30,7 +33,6 @@ from app.orders.types import OrderRole
 from app.risk.circuit_breaker import CircuitBreaker
 from app.risk.position_sizer import PositionSizer
 from app.strategy.base import Strategy
-from app.strategy.velez import VelezStrategy
 
 log = structlog.get_logger()
 
@@ -75,26 +77,31 @@ class BacktestRunner:
 
         # 2. Initialize components
         risk_config = self._app_config.risk
-        velez_config = self._app_config.velez
 
         execution = BacktestExecution(
             initial_capital=self._config.initial_capital,
             slippage_per_share=self._config.slippage_per_share,
         )
 
-        aggregators = {
-            sym: CandleAggregator(sym, self._config.candle_interval_minutes)
+        # Create strategies first — the runner reads requirements from them
+        strategies = {
+            sym: _resolve_strategy(self._config.strategy, sym, self._app_config)
             for sym in self._config.symbols
+        }
+
+        # Read candle interval and indicator config from strategy declarations
+        sample_strategy = next(iter(strategies.values()))
+        candle_interval = sample_strategy.candle_interval_minutes
+        ind_config = sample_strategy.indicator_config
+
+        aggregators = {
+            sym: CandleAggregator(sym, candle_interval) for sym in self._config.symbols
         }
         indicators = {
             sym: IndicatorCalculator(
-                fast_period=velez_config.sma_fast,
-                slow_period=velez_config.sma_slow,
+                fast_period=ind_config.get("sma_fast", 20),
+                slow_period=ind_config.get("sma_slow", 200),
             )
-            for sym in self._config.symbols
-        }
-        strategies = {
-            sym: _resolve_strategy(self._config.strategy, sym, velez_config)
             for sym in self._config.symbols
         }
 
@@ -219,6 +226,7 @@ class BacktestRunner:
             metrics,
             completed_trades,
             daily_equity,
+            candle_interval,
         )
 
         return BacktestResult(
@@ -455,6 +463,7 @@ class BacktestRunner:
         metrics: BacktestMetricsData,
         trades: list[BacktestTradeData],
         daily_equity: list[tuple[date, Decimal]],
+        candle_interval: int,
     ) -> int:
         """Store backtest results in database. Returns the run ID."""
         params = {
@@ -464,7 +473,7 @@ class BacktestRunner:
             "end_date": str(self._config.end_date),
             "initial_capital": str(self._config.initial_capital),
             "slippage_per_share": str(self._config.slippage_per_share),
-            "candle_interval_minutes": self._config.candle_interval_minutes,
+            "candle_interval_minutes": candle_interval,
         }
 
         # EOD equity curve for DB storage (daily granularity)
@@ -519,9 +528,15 @@ class BacktestRunner:
 def _resolve_strategy(
     name: str,
     symbol: str,
-    velez_config: VelezConfig,
+    app_config: AppConfig,
 ) -> Strategy:
-    """Create strategy instance. Raises BacktestError for unknown names."""
+    """Create strategy instance. Raises BacktestError for unknown names.
+
+    Strategy-specific config is resolved here — the runner never
+    reaches into strategy-specific config sections directly.
+    """
     if name == "velez":
-        return VelezStrategy(symbol=symbol, config=velez_config)
+        from app.strategy.velez import VelezStrategy
+
+        return VelezStrategy(symbol=symbol, config=app_config.velez)
     raise BacktestError(f"Unknown strategy: {name!r}. Available: velez")
