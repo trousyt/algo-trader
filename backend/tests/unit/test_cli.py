@@ -64,13 +64,30 @@ class TestStatusCommand:
 class TestBacktestCommand:
     """Test the backtest command."""
 
-    def test_backtest_not_implemented(self, runner: CliRunner) -> None:
+    def test_backtest_help_shows_options(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["backtest", "--help"])
+        assert result.exit_code == 0
+        assert "--strategy" in result.output
+        assert "--symbols" in result.output
+        assert "--start-date" in result.output
+        assert "--end-date" in result.output
+        assert "--capital" in result.output
+        assert "--slippage" in result.output
+
+    def test_backtest_missing_symbols_fails(self, runner: CliRunner) -> None:
+        result = runner.invoke(
+            cli,
+            ["backtest", "--start-date", "2026-01-01", "--end-date", "2026-02-01"],
+        )
+        assert result.exit_code != 0
+
+    def test_backtest_invalid_strategy_fails(self, runner: CliRunner) -> None:
         result = runner.invoke(
             cli,
             [
                 "backtest",
                 "--strategy",
-                "velez",
+                "nonexistent",
                 "--symbols",
                 "AAPL",
                 "--start-date",
@@ -79,16 +96,31 @@ class TestBacktestCommand:
                 "2026-02-01",
             ],
         )
-        assert result.exit_code == 0
-        assert "not yet implemented" in result.output.lower()
+        assert result.exit_code != 0
 
-    def test_backtest_help_shows_options(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["backtest", "--help"])
-        assert result.exit_code == 0
-        assert "--strategy" in result.output
-        assert "--symbols" in result.output
-        assert "--start-date" in result.output
-        assert "--end-date" in result.output
+    def test_backtest_network_error_shows_clean_message(
+        self, runner: CliRunner
+    ) -> None:
+        """Network/SSL errors display as click errors, not raw tracebacks."""
+        with patch(
+            "app.cli.commands._run_backtest",
+            side_effect=ConnectionError("SSL: CERTIFICATE_VERIFY_FAILED"),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "backtest",
+                    "--symbols",
+                    "AAPL",
+                    "--start-date",
+                    "2026-01-01",
+                    "--end-date",
+                    "2026-02-01",
+                ],
+            )
+            assert result.exit_code != 0
+            assert "Backtest failed:" in result.output
+            assert "SSL" in result.output
 
 
 class TestConfigCommand:

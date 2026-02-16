@@ -208,6 +208,19 @@ class VelezStrategy(Strategy):
         """Candles needed = slow SMA period."""
         return self._config.sma_slow
 
+    @property
+    def candle_interval_minutes(self) -> int:
+        """Velez uses configurable candle interval (default 2-min)."""
+        return self._config.candle_interval_minutes
+
+    @property
+    def indicator_config(self) -> dict[str, int]:
+        """Velez requires fast and slow SMA indicators."""
+        return {
+            "sma_fast": self._config.sma_fast,
+            "sma_slow": self._config.sma_slow,
+        }
+
     # --- Helpers (float math for signal detection) ---
 
     def _body_pct(self, bar: Bar) -> float:

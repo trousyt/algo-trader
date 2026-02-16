@@ -90,6 +90,21 @@ class Strategy(ABC):
         """Number of candles needed before strategy is warm."""
         return 200
 
+    @property
+    def candle_interval_minutes(self) -> int:
+        """Candle aggregation interval this strategy operates on."""
+        return 1
+
+    @property
+    def indicator_config(self) -> dict[str, int]:
+        """Indicator requirements declared by the strategy.
+
+        Returns a dict of indicator names to periods.
+        The engine provisions indicators based on these declarations.
+        Example: {"sma_fast": 20, "sma_slow": 200}
+        """
+        return {}
+
     def on_position_closed(self) -> None:  # noqa: B027
         """Called by TradingEngine when a position is fully closed.
 
