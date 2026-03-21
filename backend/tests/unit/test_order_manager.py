@@ -31,7 +31,7 @@ from app.orders.types import (
     OrderState,
     RiskApproval,
 )
-from tests.factories import make_signal
+from tests.factories import make_order_status, make_signal
 
 _NOW = datetime(2026, 2, 14, 15, 0, tzinfo=UTC)
 
@@ -1045,3 +1045,388 @@ class TestAcceptedTransition:
                 )
             ).scalar_one()
             assert order.state == OrderState.ACCEPTED.value
+
+
+class TestPartialCancel:
+    """Partial fill + cancel: close remaining at market."""
+
+    async def test_partial_fill_then_cancel_exits_at_market(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Entry partial fill + CANCELED → cancel stop + market sell for filled qty."""
+        om = OrderManager(broker, db_session_factory)
+        result = await om.submit_entry(make_signal(), _approval())
+
+        async with db_session_factory() as session:
+            order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == result.local_id,
+                    )
+                )
+            ).scalar_one()
+            broker_id = order.broker_id
+
+        # ACCEPTED first
+        await om.handle_trade_update(
+            _make_trade_update(event=TradeEventType.ACCEPTED, order_id=broker_id)
+        )
+
+        # Partial fill
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.PARTIAL_FILL,
+                order_id=broker_id,
+                filled_qty=Decimal("5"),
+                filled_avg_price=Decimal("155.20"),
+            )
+        )
+
+        # Submit stop-loss for the partial fill
+        await om.submit_stop_loss(
+            correlation_id=result.correlation_id,
+            symbol="AAPL",
+            qty=Decimal("5"),
+            stop_price=Decimal("154.70"),
+            parent_local_id=result.local_id,
+            strategy_name="velez",
+        )
+
+        # Now cancel the entry (remaining qty)
+        broker.cancel_order = AsyncMock()
+        await om.handle_trade_update(
+            _make_trade_update(event=TradeEventType.CANCELED, order_id=broker_id)
+        )
+
+        # Should have submitted a market sell for the filled qty
+        market_sells = [
+            o
+            for o in broker.submitted_orders
+            if o.order_type == OrderType.MARKET and o.side == Side.SELL
+        ]
+        assert len(market_sells) >= 1
+        assert market_sells[-1].qty == Decimal("5")
+
+
+class TestRequestExitEdgeCases:
+    """Edge cases in request_exit."""
+
+    async def test_request_exit_no_active_stop_returns_early(
+        self,
+        om: OrderManager,
+        broker: FakeBrokerAdapter,
+    ) -> None:
+        """No active stop for correlation_id → silent return."""
+        broker.cancel_order = AsyncMock()
+        await om.request_exit("AAPL", "nonexistent-corr")
+        broker.cancel_order.assert_not_called()
+
+    async def test_request_exit_stop_no_broker_id_returns_early(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Stop exists but has no broker_id → silent return."""
+        om = OrderManager(broker, db_session_factory)
+        # Create a stop-loss with no broker_id (PENDING_SUBMIT state)
+        # Insert directly to get a stop with no broker_id
+        now = "2026-02-14T15:00:00.000000Z"
+        async with db_session_factory() as session, session.begin():
+            session.add(
+                OrderStateModel(
+                    local_id="stop-no-bid",
+                    correlation_id="corr-test",
+                    symbol="AAPL",
+                    side="sell",
+                    order_type="stop",
+                    order_role="stop_loss",
+                    strategy="velez",
+                    qty_requested=Decimal("10"),
+                    state="pending_submit",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+
+        broker.cancel_order = AsyncMock()
+        await om.request_exit("AAPL", "corr-test")
+        broker.cancel_order.assert_not_called()
+
+
+class TestUpdateStopLossEdgeCases:
+    """Edge cases in update_stop_loss."""
+
+    async def test_update_stop_loss_replace_failure_logs_and_returns(
+        self,
+        om: OrderManager,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """replace_order raises → log exception, return (no crash)."""
+        # Setup: submit entry, fill, submit stop
+        signal = make_signal()
+        entry_result = await om.submit_entry(signal, _approval())
+
+        async with db_session_factory() as session:
+            order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == entry_result.local_id,
+                    )
+                )
+            ).scalar_one()
+            entry_broker_id = order.broker_id
+
+        await om.handle_trade_update(
+            _make_trade_update(event=TradeEventType.FILL, order_id=entry_broker_id)
+        )
+
+        await om.submit_stop_loss(
+            correlation_id=entry_result.correlation_id,
+            symbol="AAPL",
+            qty=Decimal("10"),
+            stop_price=Decimal("154.70"),
+            parent_local_id=entry_result.local_id,
+            strategy_name="velez",
+        )
+
+        broker.replace_order = AsyncMock(side_effect=RuntimeError("Replace failed"))
+
+        # Should not raise
+        await om.update_stop_loss(entry_result.correlation_id, Decimal("155.50"))
+
+
+class TestUpdateStopForPartial:
+    """Stop qty update on partial fill."""
+
+    async def test_partial_fill_updates_existing_stop_qty(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Partial fill with existing stop → replace_order with new qty."""
+        om = OrderManager(broker, db_session_factory)
+        result = await om.submit_entry(make_signal(), _approval())
+
+        async with db_session_factory() as session:
+            order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == result.local_id,
+                    )
+                )
+            ).scalar_one()
+            broker_id = order.broker_id
+
+        # ACCEPTED
+        await om.handle_trade_update(
+            _make_trade_update(event=TradeEventType.ACCEPTED, order_id=broker_id)
+        )
+
+        # First partial fill
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.PARTIAL_FILL,
+                order_id=broker_id,
+                filled_qty=Decimal("3"),
+                filled_avg_price=Decimal("155.20"),
+            )
+        )
+
+        # Submit stop for the first partial
+        await om.submit_stop_loss(
+            correlation_id=result.correlation_id,
+            symbol="AAPL",
+            qty=Decimal("3"),
+            stop_price=Decimal("154.70"),
+            parent_local_id=result.local_id,
+            strategy_name="velez",
+        )
+
+        # Mock replace_order to return a new broker_id
+        new_status = make_order_status(broker_order_id="new-stop-id")
+        broker.replace_order = AsyncMock(return_value=new_status)
+
+        # Second partial fill should trigger stop qty update
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.PARTIAL_FILL,
+                order_id=broker_id,
+                filled_qty=Decimal("7"),
+                filled_avg_price=Decimal("155.30"),
+            )
+        )
+
+        broker.replace_order.assert_called_once()
+
+    async def test_partial_fill_stop_replace_failure_does_not_crash(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """replace_order fails during partial fill stop update → log, no crash."""
+        om = OrderManager(broker, db_session_factory)
+        result = await om.submit_entry(make_signal(), _approval())
+
+        async with db_session_factory() as session:
+            order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == result.local_id,
+                    )
+                )
+            ).scalar_one()
+            broker_id = order.broker_id
+
+        await om.handle_trade_update(
+            _make_trade_update(event=TradeEventType.ACCEPTED, order_id=broker_id)
+        )
+
+        # First partial fill
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.PARTIAL_FILL,
+                order_id=broker_id,
+                filled_qty=Decimal("3"),
+                filled_avg_price=Decimal("155.20"),
+            )
+        )
+
+        # Submit stop
+        await om.submit_stop_loss(
+            correlation_id=result.correlation_id,
+            symbol="AAPL",
+            qty=Decimal("3"),
+            stop_price=Decimal("154.70"),
+            parent_local_id=result.local_id,
+            strategy_name="velez",
+        )
+
+        broker.replace_order = AsyncMock(side_effect=RuntimeError("Replace error"))
+
+        # Second partial fill — replace will fail, should not raise
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.PARTIAL_FILL,
+                order_id=broker_id,
+                filled_qty=Decimal("7"),
+                filled_avg_price=Decimal("155.30"),
+            )
+        )
+
+
+class TestTradeRecordEdgeCases:
+    """Edge cases in trade record creation."""
+
+    async def test_short_trade_pnl_calculation(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Short trade: PnL = (entry_price - exit_price) * qty."""
+        om = OrderManager(broker, db_session_factory)
+
+        # Submit SELL entry (short)
+        signal = make_signal(side=Side.SELL, entry_price=Decimal("200.00"))
+        result = await om.submit_entry(signal, _approval(qty=Decimal("5")))
+
+        async with db_session_factory() as session:
+            order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == result.local_id,
+                    )
+                )
+            ).scalar_one()
+            broker_id = order.broker_id
+
+        # Fill entry
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.FILL,
+                order_id=broker_id,
+                side=Side.SELL,
+                filled_qty=Decimal("5"),
+                filled_avg_price=Decimal("200.00"),
+            )
+        )
+
+        # Submit and fill exit (buy to cover)
+        # For a short, the stop loss buys back
+        stop_result = await om.submit_stop_loss(
+            correlation_id=result.correlation_id,
+            symbol="AAPL",
+            qty=Decimal("5"),
+            stop_price=Decimal("205.00"),
+            parent_local_id=result.local_id,
+            strategy_name="velez",
+        )
+
+        async with db_session_factory() as session:
+            stop_order = (
+                await session.execute(
+                    select(OrderStateModel).where(
+                        OrderStateModel.local_id == stop_result.local_id,
+                    )
+                )
+            ).scalar_one()
+            stop_broker_id = stop_order.broker_id
+
+        # Fill exit at 195 (profit on short)
+        await om.handle_trade_update(
+            _make_trade_update(
+                event=TradeEventType.FILL,
+                order_id=stop_broker_id,
+                side=Side.SELL,
+                filled_qty=Decimal("5"),
+                filled_avg_price=Decimal("195.00"),
+            )
+        )
+
+        # Check trade record
+        async with db_session_factory() as session:
+            trades = (
+                (
+                    await session.execute(
+                        select(TradeModel).where(
+                            TradeModel.correlation_id == result.correlation_id,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(trades) == 1
+            trade = trades[0]
+            assert trade.side == "short"
+            # PnL = (200 - 195) * 5 = 25.00
+            assert Decimal(trade.pnl) == Decimal("25.00")
+
+
+class TestCancelAllPendingErrors:
+    """cancel_all_pending error handling."""
+
+    async def test_cancel_all_pending_broker_error_continues(
+        self,
+        broker: FakeBrokerAdapter,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """One cancel fails → others still attempted."""
+        om = OrderManager(broker, db_session_factory)
+        await om.submit_entry(make_signal(symbol="AAPL"), _approval())
+        await om.submit_entry(make_signal(symbol="TSLA"), _approval())
+
+        call_count = 0
+
+        async def fail_first(bid: str) -> None:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("Cancel failed")
+
+        broker.cancel_order = fail_first  # type: ignore[assignment]
+        await om.cancel_all_pending()
+
+        assert call_count == 2  # Both attempted even though first failed

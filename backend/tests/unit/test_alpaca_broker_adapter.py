@@ -18,6 +18,7 @@ from app.broker.alpaca.broker import AlpacaBrokerAdapter
 from app.broker.errors import (
     BrokerAPIError,
     BrokerAuthError,
+    BrokerConnectionError,
     BrokerNotConnectedError,
 )
 from app.broker.types import (
@@ -549,3 +550,131 @@ class TestContextManager:
                 raise ValueError("test error")
 
         mock_stream.stop.assert_called()
+
+
+class TestConnectAPIError:
+    """Test APIError handling during connect credential validation."""
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_connect_api_error_401_raises_auth_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        """APIError 401 during credential validation → BrokerAuthError."""
+        mock_client = MagicMock()
+        mock_client.get_account.side_effect = _make_api_error(401, "Unauthorized")
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        with pytest.raises(BrokerAuthError, match="Invalid API credentials"):
+            await adapter.connect()
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_connect_api_error_500_raises_connection_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        """APIError 500 during credential validation → BrokerConnectionError."""
+        mock_client = MagicMock()
+        mock_client.get_account.side_effect = _make_api_error(500, "Internal error")
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        with pytest.raises(BrokerConnectionError, match="Failed to validate"):
+            await adapter.connect()
+
+
+class TestAPIErrorPaths:
+    """Test APIError handling in order operations."""
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_bracket_order_api_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_client = MagicMock()
+        mock_client.submit_order.side_effect = _make_api_error(422, "Invalid bracket")
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        await adapter.connect()
+
+        req = BracketOrderRequest(
+            symbol="AAPL",
+            side=Side.BUY,
+            qty=Decimal("10"),
+            order_type=OrderType.MARKET,
+            stop_loss_price=Decimal("145.00"),
+            take_profit_price=Decimal("160.00"),
+        )
+        with pytest.raises(BrokerAPIError) as exc_info:
+            await adapter.submit_bracket_order(req)
+        assert exc_info.value.status_code == 422
+        await adapter.disconnect()
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_cancel_order_api_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_client = MagicMock()
+        mock_client.cancel_order_by_id.side_effect = _make_api_error(404, "Not found")
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        await adapter.connect()
+
+        with pytest.raises(BrokerAPIError) as exc_info:
+            await adapter.cancel_order("order-uuid-123")
+        assert exc_info.value.status_code == 404
+        await adapter.disconnect()
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_replace_order_api_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_client = MagicMock()
+        mock_client.replace_order_by_id.side_effect = _make_api_error(
+            422, "Invalid replace"
+        )
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        await adapter.connect()
+
+        with pytest.raises(BrokerAPIError) as exc_info:
+            await adapter.replace_order("order-uuid-123", qty=Decimal("20"))
+        assert exc_info.value.status_code == 422
+        await adapter.disconnect()
+
+    @patch("app.broker.alpaca.broker.TradingStream")
+    @patch("app.broker.alpaca.broker.TradingClient")
+    async def test_get_order_status_api_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_client = MagicMock()
+        mock_client.get_order_by_id.side_effect = _make_api_error(
+            404, "Order not found"
+        )
+        mock_trading_cls.return_value = mock_client
+
+        adapter = AlpacaBrokerAdapter(_make_config())
+        await adapter.connect()
+
+        with pytest.raises(BrokerAPIError) as exc_info:
+            await adapter.get_order_status("order-uuid-123")
+        assert exc_info.value.status_code == 404
+        await adapter.disconnect()

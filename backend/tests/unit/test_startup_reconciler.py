@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -670,3 +670,216 @@ class TestBrokerAPIFailure:
 
         with pytest.raises(ReconciliationFatalError, match="broker down"):
             await reconciler.reconcile()
+
+
+class TestPositionValidation:
+    """Tests for _validate_position() edge cases."""
+
+    async def test_validate_position_rejects_zero_quantity(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Position with qty=0 is rejected as invalid."""
+        broker = FakeBrokerAdapter(
+            positions=[make_position(symbol="AAPL", qty=Decimal("0"))],
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert result.orphans_detected == 0
+        assert any("Invalid position qty" in e for e in result.errors)
+
+    async def test_validate_position_rejects_excessive_quantity(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Position with qty > 100k is rejected as invalid."""
+        broker = FakeBrokerAdapter(
+            positions=[make_position(symbol="AAPL", qty=Decimal("200000"))],
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert result.orphans_detected == 0
+        assert any("Invalid position qty" in e for e in result.errors)
+
+    async def test_validate_position_rejects_negative_avg_entry_price(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Position with negative avg_entry_price is rejected."""
+        broker = FakeBrokerAdapter(
+            positions=[
+                make_position(symbol="AAPL", avg_entry_price=Decimal("-5")),
+            ],
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert any("Invalid avg_entry_price" in e for e in result.errors)
+
+    async def test_validate_position_rejects_none_avg_entry_price(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Position with avg_entry_price=None is rejected."""
+        from app.broker.types import Position
+
+        position = Position(
+            symbol="AAPL",
+            qty=Decimal("100"),
+            side=Side.BUY,
+            avg_entry_price=None,  # type: ignore[arg-type]
+            market_value=Decimal("0"),
+            unrealized_pl=Decimal("0"),
+            unrealized_pl_pct=Decimal("0"),
+        )
+        broker = FakeBrokerAdapter(positions=[position])
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert any("Invalid avg_entry_price" in e for e in result.errors)
+
+
+class TestEmergencyStopPriceGuards:
+    """Tests for price boundary checks in _place_emergency_stop()."""
+
+    async def test_emergency_stop_skipped_for_zero_computed_price(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """When computed stop price <= 0, no stop is placed and error is recorded."""
+        broker = FakeBrokerAdapter(
+            positions=[
+                make_position(
+                    symbol="AAPL",
+                    qty=Decimal("100"),
+                    avg_entry_price=Decimal("0.01"),
+                ),
+            ],
+        )
+        # 99% stop offset makes computed price <= 0
+        reconciler = StartupReconciler(
+            broker,
+            db_session_factory,
+            emergency_stop_pct=Decimal("0.99"),
+        )
+
+        result = await reconciler.reconcile()
+
+        assert any("Computed emergency stop price <= 0" in e for e in result.errors)
+
+
+class TestEmergencyStopFallback:
+    """Tests for retry exhaustion and market sell fallback."""
+
+    @patch("app.orders.startup_reconciler.asyncio.sleep", new_callable=AsyncMock)
+    async def test_emergency_stop_retries_exhausted_falls_back_to_market_sell(
+        self,
+        mock_sleep: AsyncMock,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """After 3 failed stop attempts, market sell is attempted (also fails)."""
+        broker = FakeBrokerAdapter(
+            positions=[
+                make_position(
+                    symbol="AAPL",
+                    qty=Decimal("100"),
+                    avg_entry_price=Decimal("150.00"),
+                ),
+            ],
+        )
+        broker.submit_order = AsyncMock(  # type: ignore[method-assign]
+            side_effect=RuntimeError("Broker down"),
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert result.emergency_stops_placed == 1
+        assert any("Emergency stop failed" in e for e in result.errors)
+        assert any("Market sell fallback also failed" in e for e in result.errors)
+
+    @patch("app.orders.startup_reconciler.asyncio.sleep", new_callable=AsyncMock)
+    async def test_emergency_stop_market_sell_succeeds_after_stop_fails(
+        self,
+        mock_sleep: AsyncMock,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """Stop fails 3x, but market sell succeeds."""
+        broker = FakeBrokerAdapter(
+            positions=[
+                make_position(
+                    symbol="AAPL",
+                    qty=Decimal("100"),
+                    avg_entry_price=Decimal("150.00"),
+                ),
+            ],
+        )
+
+        call_count = 0
+
+        async def fail_stop_succeed_market(order: OrderRequest) -> BrokerOrderStatus:
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 3:  # 3 stop attempts
+                raise RuntimeError("Stop failed")
+            return make_order_status(broker_order_id=f"mkt-{call_count}")
+
+        broker.submit_order = fail_stop_succeed_market  # type: ignore[method-assign]
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert any("Emergency stop failed" in e for e in result.errors)
+        assert not any("Market sell fallback also failed" in e for e in result.errors)
+
+
+class TestOrderReconciliationEdgeCases:
+    """Edge cases in order reconciliation logic."""
+
+    async def test_individual_order_lookup_failure_records_error(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """When individual order lookup raises, error is recorded."""
+        local_order = _make_local_order(
+            local_id="local-stale",
+            broker_id="old-id",
+            state="submitted",
+        )
+        await _insert_order(db_session_factory, local_order)
+
+        broker = FakeBrokerAdapter()
+        broker.get_order_status = AsyncMock(  # type: ignore[method-assign]
+            side_effect=ConnectionError("timeout"),
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert any("Individual lookup failed" in e for e in result.errors)
+
+    async def test_orphan_broker_order_cancel_failure_records_error(
+        self,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """When cancelling an orphan broker order fails, error is recorded."""
+        orphan_order = make_order_status(
+            broker_order_id="orphan-001",
+            symbol="AAPL",
+            status=BrokerOrderStatus.NEW,
+        )
+        broker = FakeBrokerAdapter(open_orders=[orphan_order])
+        broker.cancel_order = AsyncMock(  # type: ignore[method-assign]
+            side_effect=RuntimeError("cancel failed"),
+        )
+        reconciler = StartupReconciler(broker, db_session_factory, _EMERGENCY_STOP_PCT)
+
+        result = await reconciler.reconcile()
+
+        assert any("Failed to cancel orphan" in e for e in result.errors)

@@ -15,7 +15,22 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.broker.alpaca.data import AlpacaDataProvider
-from app.broker.errors import BrokerAuthError, BrokerNotConnectedError
+from app.broker.errors import (
+    BrokerAuthError,
+    BrokerConnectionError,
+    BrokerError,
+    BrokerNotConnectedError,
+)
+
+
+def _make_api_error(status_code: int, message: str = "error") -> object:
+    """Create an APIError with proper status_code property behavior."""
+    from alpaca.common.exceptions import APIError
+
+    http_error = SimpleNamespace(
+        response=SimpleNamespace(status_code=status_code),
+    )
+    return APIError(f'{{"code": {status_code}, "message": "{message}"}}', http_error)
 
 
 def _make_config() -> SimpleNamespace:
@@ -328,5 +343,89 @@ class TestBarQueueBackpressure:
 
         # Queue should still be full at max capacity
         assert provider._bar_queue.full()
+
+        await provider.disconnect()
+
+
+class TestConnectAPIError:
+    """Test APIError handling during connect credential validation."""
+
+    @patch("app.broker.alpaca.data.StockDataStream")
+    @patch("app.broker.alpaca.data.StockHistoricalDataClient")
+    @patch("app.broker.alpaca.data.TradingClient")
+    async def test_connect_api_error_401_raises_auth_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_hist_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_trading_client = MagicMock()
+        mock_trading_client.get_account.side_effect = _make_api_error(
+            401, "Unauthorized"
+        )
+        mock_trading_cls.return_value = mock_trading_client
+
+        provider = AlpacaDataProvider(_make_config())
+        with pytest.raises(BrokerAuthError, match="Invalid API credentials"):
+            await provider.connect()
+
+    @patch("app.broker.alpaca.data.StockDataStream")
+    @patch("app.broker.alpaca.data.StockHistoricalDataClient")
+    @patch("app.broker.alpaca.data.TradingClient")
+    async def test_connect_api_error_500_raises_connection_error(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_hist_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        mock_trading_client = MagicMock()
+        mock_trading_client.get_account.side_effect = _make_api_error(500, "Internal")
+        mock_trading_cls.return_value = mock_trading_client
+
+        provider = AlpacaDataProvider(_make_config())
+        with pytest.raises(BrokerConnectionError, match="Failed to validate"):
+            await provider.connect()
+
+
+class TestSubscribeBarsEdgeCases:
+    """Edge cases for subscribe_bars."""
+
+    @patch("app.broker.alpaca.data.StockDataStream")
+    @patch("app.broker.alpaca.data.StockHistoricalDataClient")
+    @patch("app.broker.alpaca.data.TradingClient")
+    async def test_subscribe_bars_twice_raises(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_hist_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        provider = AlpacaDataProvider(_make_config())
+        await provider.connect()
+
+        await provider.subscribe_bars(["AAPL"])
+
+        with pytest.raises(BrokerError, match="already called"):
+            await provider.subscribe_bars(["TSLA"])
+
+        await provider.disconnect()
+
+
+class TestGetHistoricalBarsEdgeCases:
+    """Edge cases for get_historical_bars."""
+
+    @patch("app.broker.alpaca.data.StockDataStream")
+    @patch("app.broker.alpaca.data.StockHistoricalDataClient")
+    @patch("app.broker.alpaca.data.TradingClient")
+    async def test_unsupported_timeframe_raises(
+        self,
+        mock_trading_cls: MagicMock,
+        mock_hist_cls: MagicMock,
+        mock_stream_cls: MagicMock,
+    ) -> None:
+        provider = AlpacaDataProvider(_make_config())
+        await provider.connect()
+
+        with pytest.raises(ValueError, match="Unsupported timeframe"):
+            await provider.get_historical_bars("AAPL", count=10, timeframe="2h")
 
         await provider.disconnect()
