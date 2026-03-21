@@ -1,6 +1,6 @@
 ---
 name: testing-guidance
-description: Testing standards, anti-patterns, and the testing pyramid for algo-trader. Use when planning or reviewing tests, or when implementing features that need test coverage. Emphasizes unit-first testing, meaningful integration/e2e tests, and never leaving critical paths untested.
+description: Testing standards, anti-patterns, and the testing pyramid for algo-trader. Use when implementing any feature or writing any production code — every implementation must include tests. Use when planning features or writing specifications to ensure testability is designed in from the start. Use when the user is unsure what to test, how to test, or whether test coverage is sufficient. Use when reviewing code or tests for quality and completeness.
 ---
 
 # Testing Guidance
