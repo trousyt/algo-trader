@@ -122,6 +122,7 @@ When running review agents in the background, instruct each agent to write its f
 - Prefer early returns over deeply nested conditionals
 
 ### Testing
+- **Coverage threshold: 90% minimum** — `pytest --cov=app --cov-fail-under=90` must pass before merging. See `testing-guidance` skill for full details
 - **Acceptance criteria are mandatory** — Every plan has acceptance items (checkboxes). ALL must be confirmed passing before committing to the feature branch and merging to main. It is never acceptable to leave unchecked items and merge. If an item turns out to be unnecessary, explicitly remove it from the plan with a rationale before merging.
 - Unit tests: Strategy logic, risk management, order state machine
 - Integration tests: Broker API, data pipeline, WebSocket connections

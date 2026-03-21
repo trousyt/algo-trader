@@ -97,8 +97,23 @@ def test_validate_position():
 def test_cancel():
 ```
 
+## Coverage Threshold
+
+**Minimum 90% line coverage** is required before merging any feature branch. This is a hard gate, not a guideline.
+
+```bash
+# Check coverage for the full app
+cd backend && python -m pytest tests/unit/ --cov=app --cov-report=term-missing --cov-fail-under=90
+```
+
+- Run this after every batch of test additions to verify progress
+- The `--cov-fail-under=90` flag makes the command exit non-zero if coverage drops below 90%
+- Focus coverage effort on safety-critical modules first (orders/, broker/, risk/), then work outward
+- Coverage of CLI commands and UI routes is less critical than coverage of order lifecycle and risk management, but all modules must contribute to the 90% floor
+
 ## Checklist Before Merging
 
+- [ ] **Coverage ≥ 90%** — `pytest --cov=app --cov-fail-under=90` passes
 - [ ] Every new function/method has unit tests covering success AND failure paths
 - [ ] Every branch (`if`/`else`/`except`) is exercised by at least one test
 - [ ] Fallback and recovery paths have dedicated tests (not just the happy path)
