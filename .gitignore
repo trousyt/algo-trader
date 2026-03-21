@@ -25,6 +25,10 @@ node_modules/
 # Data
 data/
 
+# Coverage
+.coverage
+htmlcov/
+
 # Linting/Type checking cache
 .mypy_cache/
 .ruff_cache/
